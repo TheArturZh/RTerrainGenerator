@@ -1,6 +1,6 @@
 local public = {}
 
-local PerlinNoise = require(script.Parent.PerlinNoise)
+local PerlinNoise = require(script.PerlinNoise)
 
 local function InverseLerp(from, to, value)
 	if from < to then
