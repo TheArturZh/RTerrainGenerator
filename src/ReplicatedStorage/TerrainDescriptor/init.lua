@@ -1,40 +1,69 @@
-local module = {}
+--[[
+	This module is a decorator for all other modules that are generating a data model of the world.
+]]--
 
 local HeightmapGenerator = require(script.Parent.HeightmapGenerator)
 local Falloff = require(script.Falloff)
 local RiverGenerator = require(script.RiverGenerator)
 local Utils = require(script.Parent.Utils)
 
-module.tile_height_step = 0.0125
+local TerrainDescriptorBase = {
+	--Default values of properties
+	 tile_height_step     = 0.0125
+	,huge_tile_size_coeff = 2
 
-module.water_level = 0.3
-module.rivers = RiverGenerator.rivers
-module.lakes  = RiverGenerator.lakes
+	,water_level          = 0.3
 
-module.HugeTileSizeCoeff = 2
+	,forests_enabled      = true
+	,forest_point_amount  = 5
+	,forest_point_radius  = 14
+	,forest_max_height    = 0.6
+	,forest_min_height    = 0.351
+	,forest_base_chance   = 0.025
+	,falloff_distance     = 10
+	,forest_deduplication_grid_scale = 32
 
-module.trees = {}
-module.forest_point_amount = 5
-module.forest_point_radius = 14
-module.forest_max_height   = 0.6
-module.forest_base_chance  = 0.025
-module.forest_deduplication_grid_scale = 32
+	,width  = 128
+	,height = 128
 
-module.FalloffDistance = 10
+	,seed = 251
+
+	,status = "Uninitialized"
+
+	--[[
+	,Heightmap = {}
+	,rivers = {}
+	,lakes  = {}
+	,trees  = {}
+	]]--
+}
+
+local object_constructor = function()
+	local new_object = {}
+	return setmetatable(new_object,{__index = TerrainDescriptorBase})
+end
+TerrainDescriptorBase.new = object_constructor
+
+function TerrainDescriptorBase.UpdateStatus(self,string_status)
+	self.status = string_status
+	wait()
+end
 
 local function ApplyHeightmapSteps(Heightmap, step)
-	local width = #Heightmap
-	local height = Heightmap[1] and #Heightmap[1] or 0
+	if step ~= 0 then
+		local width = #Heightmap
+		local height = Heightmap[1] and #Heightmap[1] or 0
 
-	for x = 1, width do
-		for y = 1, height do
-			Heightmap[x][y] = Utils.round(Heightmap[x][y]/step) * step
+		for x = 1, width do
+			for y = 1, height do
+				Heightmap[x][y] = Utils.round(Heightmap[x][y]/step) * step
+			end
 		end
 	end
 end
 
-module.InitializeTerrain = function(width, height, forests, seed)
-	seed = seed or 0
+TerrainDescriptorBase.Initialize = function(self)
+	local seed = self.seed or 0
 	local RandomGen = Random.new(seed)
 
 	local offsetX,offsetY
@@ -47,21 +76,26 @@ module.InitializeTerrain = function(width, height, forests, seed)
 		offsetY = 0
 	end
 
-	local Heightmap = HeightmapGenerator.GenerateWithDomainWarping(offsetX,offsetY,width,height,32,4,0.5,2)
+	self:UpdateStatus("Generating heightmap")
 
-	Falloff.Apply(Heightmap,module.FalloffDistance)
+	local Heightmap = HeightmapGenerator.GenerateWithDomainWarping(offsetX,offsetY,self.width,self.height,32,4,0.5,2)
+	Falloff.Apply(Heightmap, self.falloff_distance)
+	ApplyHeightmapSteps(Heightmap, self.tile_height_step)
 
-	ApplyHeightmapSteps(Heightmap, module.tile_height_step)
+	self:UpdateStatus("Generating rivers and lakes")
 
-	wait()
+	local rivers, lakes = RiverGenerator.Generate(Heightmap, 5, self.water_level, seed)
+	RiverGenerator.ApplyToHeightmap(Heightmap, self.tile_height_step, rivers)
 
-	RiverGenerator.Generate(Heightmap,5,module.water_level,seed)
-	RiverGenerator.ApplyToHeightmap(Heightmap,module.tile_height_step*1)
+	self:UpdateStatus("Generating trees")
 
-	if forests then
+	local trees = {}
 
-		for x = 1,width*module.HugeTileSizeCoeff do
-			module.trees[x] = {}
+	--what
+	if self.forests_enabled then
+
+		for x = 1, self.width * self.huge_tile_size_coeff do
+			trees[x] = {}
 		end
 
 		local forest_points = {}
@@ -69,24 +103,24 @@ module.InitializeTerrain = function(width, height, forests, seed)
 		do
 			local forest_grid = {}
 
-			local forset_grid_falloff = math.ceil(module.FalloffDistance/module.forest_deduplication_grid_scale)
+			local forest_grid_falloff = math.ceil(self.falloff_distance / self.forest_deduplication_grid_scale)
 
-			for i = forset_grid_falloff, width/16 - forset_grid_falloff do
+			for i = forest_grid_falloff, self.width/self.forest_deduplication_grid_scale - forest_grid_falloff do
 				forest_grid[i] = {}
 			end
 
-			for point = 1,module.forest_point_amount do
+			for point = 1, self.forest_point_amount do
 				local pointX, pointY
 
 				repeat
-					pointX = RandomGen:NextInteger(forset_grid_falloff, width/16 - forset_grid_falloff)
-					pointY = RandomGen:NextInteger(forset_grid_falloff, height/16 - forset_grid_falloff)
+					pointX = RandomGen:NextInteger(forest_grid_falloff, self.width/self.forest_deduplication_grid_scale - forest_grid_falloff)
+					pointY = RandomGen:NextInteger(forest_grid_falloff, self.height/self.forest_deduplication_grid_scale - forest_grid_falloff)
 				until not (forest_grid[pointX][pointY])
 
 				forest_grid[pointX][pointY] = true
 			end
 
-			local offsetMax = module.forest_deduplication_grid_scale * module.HugeTileSizeCoeff - 1
+			local offsetMax = self.forest_deduplication_grid_scale * self.huge_tile_size_coeff - 1
 
 			for pointX, row_x in pairs(forest_grid) do
 				for pointY, val in pairs(row_x) do
@@ -94,10 +128,8 @@ module.InitializeTerrain = function(width, height, forests, seed)
 					local offsetX = RandomGen:NextInteger(0, offsetMax)
 					local offsetY = RandomGen:NextInteger(0, offsetMax)
 
-					local finalX = pointX * module.forest_deduplication_grid_scale * module.HugeTileSizeCoeff + offsetX
-					local finalY = pointY * module.forest_deduplication_grid_scale * module.HugeTileSizeCoeff + offsetY
-
-					print(pointX,pointY,finalX,finalY)
+					local finalX = pointX * self.forest_deduplication_grid_scale * self.huge_tile_size_coeff + offsetX
+					local finalY = pointY * self.forest_deduplication_grid_scale * self.huge_tile_size_coeff + offsetY
 
 					forest_points[#forest_points+1] = {finalX, finalY}
 
@@ -105,34 +137,37 @@ module.InitializeTerrain = function(width, height, forests, seed)
 			end
 		end
 
-		local forest_max_chance = module.forest_base_chance + 1
+		local forest_max_chance = self.forest_base_chance + 1
+		local forest_min_height = self.water_level
 
-		wait()
+		if self.forest_min_height > self.water_level then
+			forest_min_height = self.forest_min_height
+		end
 
-		for x = 1,width*module.HugeTileSizeCoeff do
+		for x = 1, self.width * self.huge_tile_size_coeff do
 
-			local HugeTileX = math.ceil(x/module.HugeTileSizeCoeff)
+			local HugeTileX = math.ceil(x / self.huge_tile_size_coeff)
 
-			for y = 1,height*module.HugeTileSizeCoeff do
+			for y = 1, self.height * self.huge_tile_size_coeff do
 
-				local HugeTileY = math.ceil(y/module.HugeTileSizeCoeff)
+				local HugeTileY = math.ceil(y / self.huge_tile_size_coeff)
 
 				local Height = Heightmap[HugeTileX][HugeTileY]
 
-				if Height >= module.water_level and Height > 0.35 and Height < module.forest_max_height then
-					if (not (module.rivers[HugeTileX] and module.rivers[HugeTileX][HugeTileY])) and (not(module.lakes[HugeTileX] and module.lakes[HugeTileX][HugeTileY])) then
+				if Height >= self.forest_min_height and Height < self.forest_max_height then
+					if (not (rivers[HugeTileX] and rivers[HugeTileX][HugeTileY])) and (not(lakes[HugeTileX] and lakes[HugeTileX][HugeTileY])) then
 
-						local chance = module.forest_base_chance
+						local chance = self.forest_base_chance
 
 						for _,point in pairs(forest_points) do
 							local x_diff = math.abs(x - point[1])
-							if x_diff <= (module.forest_point_radius) then
+							if x_diff <= (self.forest_point_radius) then
 
 								local y_diff = math.abs(y - point[2])
-								if y_diff <= (module.forest_point_radius) then
+								if y_diff <= (self.forest_point_radius) then
 
 									local new_radius = math.sqrt(x_diff^2 + y_diff^2)
-									local new_chance = (1 - new_radius / module.forest_point_radius + module.forest_base_chance) / forest_max_chance
+									local new_chance = (1 - new_radius / self.forest_point_radius + self.forest_base_chance) / forest_max_chance
 
 									if new_chance > chance then
 										chance = new_chance
@@ -145,7 +180,7 @@ module.InitializeTerrain = function(width, height, forests, seed)
 
 						local roll = RandomGen:NextNumber(0,1)
 						if roll <= chance then
-							module.trees[x][y] = true
+							trees[x][y] = true
 						end
 
 					end
@@ -156,7 +191,10 @@ module.InitializeTerrain = function(width, height, forests, seed)
 
 	end
 
-	return Heightmap
+	self.Heightmap = Heightmap
+	self.trees = trees
+	self.rivers = rivers
+	self.lakes = lakes
 end
 
-return module
+return {new = object_constructor}

@@ -189,9 +189,9 @@ local function is_rivers_nearby(x,y)
 	return false
 end
 
-function module.Generate(Heightmap,river_amount,water_level,seed,map_width,map_height)
-	map_width  = map_width  or #Heightmap
-	map_height = map_height or (Heightmap[1] and #Heightmap[1] or 0)
+function module.Generate(Heightmap,river_amount,water_level,seed)
+	local map_width  = #Heightmap
+	local map_height = Heightmap[1] and #Heightmap[1] or 0
 
 	local RandomGen = Random.new(seed or 0)
 
@@ -313,7 +313,7 @@ function module.Generate(Heightmap,river_amount,water_level,seed,map_width,map_h
 			check_pos(0,1)
 
 			if lowest_height > current_val then
-				print("END: LAKE")
+				print("END: NOWHERE TO FLOW")
 				break
 			end
 
@@ -348,15 +348,19 @@ function module.Generate(Heightmap,river_amount,water_level,seed,map_width,map_h
 			rivers_put(posX,posY,lowest_height)
 
 			if lifetime == max_lifetime then
-				print("END: LIFETIME EXCEEDED")
+				print("END: RIVER LIFETIME EXCEEDED")
 			end
 
 		end
 	end
+
+	return module.rivers, module.lakes
 end
 
 function module.ApplyToHeightmap(Heightmap,depth,rivers)
-	rivers = rivers or module.rivers
+	if not rivers then
+		error('Error: There is no data about rivers being passed to "ApplyToHeightmap" function')
+	end
 
 	for x,row in pairs(rivers) do
 		for y,height in pairs(row) do

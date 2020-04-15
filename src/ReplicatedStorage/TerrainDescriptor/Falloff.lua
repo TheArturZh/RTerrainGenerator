@@ -31,8 +31,6 @@ function module.Apply(Heightmap,Distance)
 			Heightmap[x][y] = Heightmap[x][y] * fade
 		end
 	end
-
-	return Heightmap
 end
 
 return module
