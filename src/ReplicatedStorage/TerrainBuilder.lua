@@ -1,6 +1,7 @@
 local module = {}
 
 local Colorset = require(script.Parent.Colorset)
+local Utils = require(script.Parent.Utils)
 
 module.TileSide = 20
 module.TileHeight = 5
@@ -20,31 +21,12 @@ module.tree_meshes = script.Parent.Meshes.Trees:GetChildren()
 
 local tile_height_step = 1/(module.HeightRange/module.TileHeight)
 
-function round(x)
-	if x%1 >= 0.5 then
-		return math.ceil(x)
-	end
-	return math.floor(x)
-end
-
 local function compare(v1,v2)
 	if v2 - v1 >= (tile_height_step - 0.001) then
 		return 1
 	end
 
 	return 0
-end
-
-local function turn_vector2(v2,angle)
-	local angle_rad = angle/180 * math.pi
-
-	local cos = math.cos(angle_rad)
-	local sin = math.sin(angle_rad)
-
-	local x = v2.x * cos - v2.y * sin
-	local y = v2.x * sin + v2.y * cos
-
-	return Vector2.new(x,y)
 end
 
 local function HashSurroundings(Heightmap,x,y,map_width,map_height)
@@ -220,7 +202,7 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 
 				--Ah yes, I love comparing doubles that are expceted to be whole but in fact are fractional
 				--(yep, "round" function is a MUST here)
-				if round(Heightmap[x][y] / tile_height_step) >= height then
+				if Utils.round(Heightmap[x][y] / tile_height_step) >= height then
 
 					if not row_length then
 						row_length = 1
@@ -624,7 +606,7 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 
 						wedge_part.Parent = container
 
-						local height_diff_step = round(height_diff/tile_height_step)
+						local height_diff_step = Utils.round(height_diff/tile_height_step)
 
 						if height_diff_step > 1 then
 							local vertical = Instance.new("Part")
@@ -678,7 +660,7 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 					--Random tree orientation
 					local tree_angle_y = RandomGen:NextInteger(1,360)
 
-					local new_offsets_v2 = turn_vector2(Vector2.new(tree.Position.X,tree.Position.Z),tree_angle_y)
+					local new_offsets_v2 = Utils.turn_vector2(Vector2.new(tree.Position.X,tree.Position.Z),tree_angle_y)
 
 					local new_tree_offsets = Vector3.new(
 						 new_offsets_v2.X

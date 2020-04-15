@@ -3,6 +3,7 @@ local module = {}
 local HeightmapGenerator = require(script.Parent.HeightmapGenerator)
 local Falloff = require(script.Falloff)
 local RiverGenerator = require(script.RiverGenerator)
+local Utils = require(script.Parent.Utils)
 
 module.tile_height_step = 0.0125
 
@@ -20,6 +21,17 @@ module.forest_base_chance  = 0.025
 module.forest_deduplication_grid_scale = 32
 
 module.FalloffDistance = 10
+
+local function ApplyHeightmapSteps(Heightmap, step)
+	local width = #Heightmap
+	local height = Heightmap[1] and #Heightmap[1] or 0
+
+	for x = 1, width do
+		for y = 1, height do
+			Heightmap[x][y] = Utils.round(Heightmap[x][y]/step) * step
+		end
+	end
+end
 
 module.InitializeTerrain = function(width, height, forests, seed)
 	seed = seed or 0
@@ -39,11 +51,7 @@ module.InitializeTerrain = function(width, height, forests, seed)
 
 	Falloff.Apply(Heightmap,module.FalloffDistance)
 
-	for x = 1, width do
-		for y = 1, height do
-			Heightmap[x][y] = math.floor(Heightmap[x][y]/module.tile_height_step)*module.tile_height_step
-		end
-	end
+	ApplyHeightmapSteps(Heightmap, module.tile_height_step)
 
 	wait()
 
@@ -78,10 +86,10 @@ module.InitializeTerrain = function(width, height, forests, seed)
 				forest_grid[pointX][pointY] = true
 			end
 
+			local offsetMax = module.forest_deduplication_grid_scale * module.HugeTileSizeCoeff - 1
+
 			for pointX, row_x in pairs(forest_grid) do
 				for pointY, val in pairs(row_x) do
-
-					local offsetMax = module.forest_deduplication_grid_scale * module.HugeTileSizeCoeff - 1
 
 					local offsetX = RandomGen:NextInteger(0, offsetMax)
 					local offsetY = RandomGen:NextInteger(0, offsetMax)
@@ -95,14 +103,6 @@ module.InitializeTerrain = function(width, height, forests, seed)
 
 				end
 			end
-
-			--[[
-			for point = 1,module.forest_point_amount do
-				local pointX = RandomGen:NextInteger(module.FalloffDistance,width*module.HugeTileSizeCoeff - module.FalloffDistance)
-				local pointY = RandomGen:NextInteger(module.FalloffDistance,height*module.HugeTileSizeCoeff - module.FalloffDistance)
-
-				forest_points[#forest_points+1] = {pointX, pointY}
-			end]]
 		end
 
 		local forest_max_chance = module.forest_base_chance + 1
