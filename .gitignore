@@ -12,6 +12,7 @@
 # No Roblox Studio files
 *.rbxl
 *.rbxlx
+*.lock
 
 # No Windows-DE-generated files
 Thumbs.db
@@ -21,3 +22,6 @@ ehthumbs.db
 
 .vscode
 .vscode/*
+
+Tools
+Tools/*
