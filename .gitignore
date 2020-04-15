@@ -18,3 +18,6 @@ Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db
 [Dd]esktop.ini
+
+.vscode
+.vscode/*
