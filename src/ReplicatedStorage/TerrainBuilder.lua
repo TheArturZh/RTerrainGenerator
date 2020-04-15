@@ -17,7 +17,9 @@ module.water_level = 0.3
 module.water_plane_y_offset  = -0.5
 module.water_plane_thickness = 0.1
 
-module.tree_meshes = script.Parent.Meshes.Trees:GetChildren()
+if script.Parent:FindFirstChild("Meshes") then
+	module.tree_meshes = script.Parent.Meshes.Trees:GetChildren()
+end
 
 local tile_height_step = 1/(module.HeightRange/module.TileHeight)
 
