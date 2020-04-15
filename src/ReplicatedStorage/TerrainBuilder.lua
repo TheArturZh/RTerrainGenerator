@@ -19,6 +19,8 @@ module.water_plane_thickness = 0.1
 
 if script.Parent:FindFirstChild("Meshes") then
 	module.tree_meshes = script.Parent.Meshes.Trees:GetChildren()
+else
+	module.tree_meshes = {}
 end
 
 local tile_height_step = 1/(module.HeightRange/module.TileHeight)
