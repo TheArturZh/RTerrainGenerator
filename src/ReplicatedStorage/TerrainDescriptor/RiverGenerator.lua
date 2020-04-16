@@ -1,10 +1,12 @@
 local module = {}
 
 local RiverGeneratorBase = {
+	--Default properties
 	 max_lifetime = 50
 	,river_amount = 5
 	,water_level  = 0.3
 	,seed = 251
+	,text_output = true
 }
 
 local function object_constructor()
@@ -135,7 +137,7 @@ local function valley_to_lake(valleys,lakes,posX,posY)
 			y = y - 1
 		end
 
-		for y = y+1,max_y do
+		for y = y+1, max_y do
 			if valleys[posX+1][y] and not (lakes[posX+1] and lakes[posX+1][y]) then
 				recursive_line_fill(posX+1,y)
 			end
@@ -198,7 +200,13 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 
 	local valleys = ValleyDetection(Heightmap, self.water_level)
 
-	local function get_val_river(x,y)
+	--[[
+		Because rivers should not split, river tile should be lower or on the same height as the surrouding tiles.
+		Because of that we need to find the lowest surrounding tile, that is not the next tile where river will flow, and level
+		current tile (tile at given X and Y) to it.
+		Also, river shouldn't be lower that a lake, so this function checks that too.
+	]]--
+	local function get_val_leveled(x,y)
 		local sec_low_height = Heightmap[x][y]
 		local lowest_height = Heightmap[x][y]
 		local lowest_lake = math.huge
@@ -230,7 +238,6 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 		end
 
 		return sec_low_height
-
 	end
 
 	local rivers = {}
@@ -261,33 +268,40 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 					good_height = true
 				end
 
+				--River shouldn't spawn in valley
 				if valleys[posX][posY] then
 					is_empty = false
 				end
 
+				--River shouldn't spawn next to another river
 				if is_rivers_nearby(rivers,posX,posY) then
 					is_empty = false
 				end
 
 			until good_height and is_empty
 
-			rivers_put(posX,posY,get_val_river(posX,posY))
+			rivers_put(posX,posY,get_val_leveled(posX,posY))
 		end
 
 
 		local dirX,dirY = 0,0
 		local velX,velY = 0,0
 
+		--Simulate river flow
 		for lifetime=1, self.max_lifetime do
 
-			local current_val = get_val_river(posX,posY)
-
 			if posX <= 1 or posY <= 1 or posX >= map_width or posY >= map_height then
-				print("MAP BORDER")
+				print("END: MAP BORDER MET")
 				break
 			end
 
-			--Find next pos
+			local current_val = get_val_leveled(posX,posY)
+
+			--[[
+				To find next river position we should check leveled values of 4 surrounding tiles and pick the lowest.
+				If there is two tiles with the same leveled values, pick one that have the lowest value on a heightmap.
+				If they have same leveled and heightmap values, pick one according to river's velocity.
+			]]--
 			local lowest_height = math.huge
 			local lowest_x
 			local lowest_y
@@ -297,22 +311,33 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 
 					local result_posX = posX + x_diff
 					local result_posY = posY + y_diff
-					local val = get_val_river(result_posX, result_posY)
+
+					local val = get_val_leveled(result_posX, result_posY)
 
 					if val < lowest_height then
+
 						lowest_height = val
 						lowest_x = result_posX
 						lowest_y = result_posY
+
 					elseif val == lowest_height then
+
 						if (Heightmap[lowest_x][lowest_y] > Heightmap[result_posX][result_posY]) then
+
 							lowest_x = result_posX
 							lowest_y = result_posY
+
 						elseif (Heightmap[lowest_x][lowest_y] == Heightmap[result_posX][result_posY]) then
-							if ((x_diff ~= 0 and x_diff == velX) or x_diff == 0) and ((y_diff ~= 0 and y_diff == velY) or y_diff == 0) then
+							--On completely flat surfaces water will flow according to it's velocity
+							if ((x_diff ~= 0 and x_diff == velX) or x_diff == 0) and
+							   ((y_diff ~= 0 and y_diff == velY) or y_diff == 0) then
+
 								lowest_x = result_posX
 								lowest_y = result_posY
+
 							end
 						end
+
 					end
 
 				end
@@ -323,6 +348,7 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 			check_pos(0,-1)
 			check_pos(0,1)
 
+			--This one shouldn't happen
 			if lowest_height > current_val then
 				print("END: NOWHERE TO FLOW")
 				break
@@ -354,7 +380,7 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 				velY = dirY
 			end
 
-			posX,posY = lowest_x,lowest_y
+			posX, posY = lowest_x, lowest_y
 
 			rivers_put(posX,posY,lowest_height)
 

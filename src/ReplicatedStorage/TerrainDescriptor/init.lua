@@ -1,5 +1,5 @@
 --[[
-	This module is a decorator for all other modules that are generating a data model of the world.
+	This module is a decorator and a facade for all other modules that are generating a data model of the world.
 ]]--
 
 local HeightmapGenerator = require(script.Parent.HeightmapGenerator)
@@ -8,7 +8,7 @@ local RiverGenerator = require(script.RiverGenerator)
 local Utils = require(script.Parent.Utils)
 
 local TerrainDescriptorBase = {
-	--Default values of properties
+	--Default properties
 	 tile_height_step     = 0.0125
 	,huge_tile_size_coeff = 2
 
@@ -27,6 +27,7 @@ local TerrainDescriptorBase = {
 	,height = 128
 
 	,seed = 251
+	,max_random_octave_offset = 32*1024
 
 	,status = "Uninitialized"
 
@@ -88,8 +89,8 @@ TerrainDescriptorBase.Initialize = function(self)
 	local offsetX,offsetY
 
 	if seed ~= 0 then
-		offsetX = RandomGen:NextInteger(0,32*1024)
-		offsetY = RandomGen:NextInteger(0,32*1024)
+		offsetX = RandomGen:NextInteger(0,self.max_random_octave_offset)
+		offsetY = RandomGen:NextInteger(0,self.max_random_octave_offset)
 	else
 		offsetX = 0
 		offsetY = 0
@@ -178,7 +179,8 @@ TerrainDescriptorBase.Initialize = function(self)
 				local Height = Heightmap[HugeTileX][HugeTileY]
 
 				if Height >= self.forest_min_height and Height < self.forest_max_height then
-					if (not (rivers[HugeTileX] and rivers[HugeTileX][HugeTileY])) and (not(lakes[HugeTileX] and lakes[HugeTileX][HugeTileY])) then
+					if (not (rivers[HugeTileX] and rivers[HugeTileX][HugeTileY])) and
+					   (not (lakes[HugeTileX] and lakes[HugeTileX][HugeTileY])) then
 
 						local chance = self.forest_base_chance
 
