@@ -1,19 +1,22 @@
 local module = {}
 
-local max_lifetime = 50
-module.rivers = {}
-module.lakes = {}
+local RiverGeneratorBase = {
+	 max_lifetime = 50
+	,river_amount = 5
+	,water_level  = 0.3
+	,seed = 251
+}
 
-local function rivers_put(x,y,height)
-	if not module.rivers[x] then
-		module.rivers[x] = {}
-	end
-	module.rivers[x][y] = height
+local function object_constructor()
+	local new_object = {}
+	return setmetatable(new_object,{__index = RiverGeneratorBase})
 end
 
-local function ValleyDetection(Heightmap,water_level,map_width,map_height)
-	map_width  = map_width  or #Heightmap
-	map_height = map_height or (Heightmap[1] and #Heightmap[1] or 0)
+RiverGeneratorBase.new = object_constructor
+
+local function ValleyDetection(Heightmap,water_level)
+	local map_width  = #Heightmap
+	local map_height = Heightmap[1] and #Heightmap[1] or 0
 
 	local drains = {}
 	--Make map edges drain water
@@ -108,12 +111,10 @@ local function ValleyDetection(Heightmap,water_level,map_width,map_height)
 	return fill
 end
 
-local function valley_to_lake(valleys,posX,posY)
+local function valley_to_lake(valleys,lakes,posX,posY)
 	if not (valleys[posX] and valleys[posX][posY]) then
-		error("Valley not found at position "..tonumber(posX)..", "..tonumber(posY))
+		error("Valley not found at position "..tostring(posX)..", "..tostring(posY))
 	end
-
-	local lakes = module.lakes
 
 	local function recursive_line_fill(posX,posY)
 		lakes[posX] = lakes[posX] or {}
@@ -148,39 +149,39 @@ local function valley_to_lake(valleys,posX,posY)
 	recursive_line_fill(posX,posY)
 end
 
-local function is_rivers_nearby(x,y)
-	if module.rivers[x] then
-		if module.rivers[x][y+1] then
+local function is_rivers_nearby(rivers,x,y)
+	if rivers[x] then
+		if rivers[x][y+1] then
 			return true
 		end
-		if module.rivers[x][y-1] then
+		if rivers[x][y-1] then
 			return true
 		end
-		if module.rivers[x][y] then
-			return true
-		end
-	end
-
-	if module.rivers[x+1] then
-		if module.rivers[x+1][y+1] then
-			return true
-		end
-		if module.rivers[x+1][y-1] then
-			return true
-		end
-		if module.rivers[x+1][y] then
+		if rivers[x][y] then
 			return true
 		end
 	end
 
-	if module.rivers[x-1] then
-		if module.rivers[x-1][y+1] then
+	if rivers[x+1] then
+		if rivers[x+1][y+1] then
 			return true
 		end
-		if module.rivers[x-1][y-1] then
+		if rivers[x+1][y-1] then
 			return true
 		end
-		if module.rivers[x-1][y] then
+		if rivers[x+1][y] then
+			return true
+		end
+	end
+
+	if rivers[x-1] then
+		if rivers[x-1][y+1] then
+			return true
+		end
+		if rivers[x-1][y-1] then
+			return true
+		end
+		if rivers[x-1][y] then
 			return true
 		end
 	end
@@ -189,13 +190,13 @@ local function is_rivers_nearby(x,y)
 	return false
 end
 
-function module.Generate(Heightmap,river_amount,water_level,seed)
+function RiverGeneratorBase.Generate(self, Heightmap)
 	local map_width  = #Heightmap
 	local map_height = Heightmap[1] and #Heightmap[1] or 0
 
-	local RandomGen = Random.new(seed or 0)
+	local RandomGen = Random.new(self.seed or 0)
 
-	local valleys = ValleyDetection(Heightmap,water_level)
+	local valleys = ValleyDetection(Heightmap, self.water_level)
 
 	local function get_val_river(x,y)
 		local sec_low_height = Heightmap[x][y]
@@ -232,7 +233,17 @@ function module.Generate(Heightmap,river_amount,water_level,seed)
 
 	end
 
-	for river_num = 1,river_amount do
+	local rivers = {}
+	local lakes = {}
+
+	local function rivers_put(x,y,height)
+		if not rivers[x] then
+			rivers[x] = {}
+		end
+		rivers[x][y] = height
+	end
+
+	for river_num = 1, self.river_amount do
 
 		local posX
 		local posY
@@ -254,7 +265,7 @@ function module.Generate(Heightmap,river_amount,water_level,seed)
 					is_empty = false
 				end
 
-				if is_rivers_nearby(posX,posY) then
+				if is_rivers_nearby(rivers,posX,posY) then
 					is_empty = false
 				end
 
@@ -267,12 +278,12 @@ function module.Generate(Heightmap,river_amount,water_level,seed)
 		local dirX,dirY = 0,0
 		local velX,velY = 0,0
 
-		for lifetime=1,max_lifetime do
+		for lifetime=1, self.max_lifetime do
 
 			local current_val = get_val_river(posX,posY)
 
-			if posX <= 1 or posY <= 1 or posX == map_width or posY == map_height then
-				print("MAP END!")
+			if posX <= 1 or posY <= 1 or posX >= map_width or posY >= map_height then
+				print("MAP BORDER")
 				break
 			end
 
@@ -317,18 +328,18 @@ function module.Generate(Heightmap,river_amount,water_level,seed)
 				break
 			end
 
-			if module.rivers[lowest_x] and module.rivers[lowest_x][lowest_y] then
+			if rivers[lowest_x] and rivers[lowest_x][lowest_y] then
 				print("END: MERGED WITH RIVER")
 				break
 			end
 
 			if valleys[lowest_x][lowest_y] then
 				print("END: MERGED WITH LAKE")
-				valley_to_lake(valleys,lowest_x,lowest_y)
+				valley_to_lake(valleys,lakes,lowest_x,lowest_y)
 				break
 			end
 
-			if lowest_height < water_level then
+			if lowest_height < self.water_level then
 				print("END: OCEAN LEVEL REACHED")
 				break
 			end
@@ -347,32 +358,19 @@ function module.Generate(Heightmap,river_amount,water_level,seed)
 
 			rivers_put(posX,posY,lowest_height)
 
-			if lifetime == max_lifetime then
+			if lifetime == self.max_lifetime then
 				print("END: RIVER LIFETIME EXCEEDED")
 			end
 
 		end
 	end
 
-	return module.rivers, module.lakes
+	return rivers, lakes
 end
 
-function module.ApplyToHeightmap(Heightmap,depth,rivers)
-	if not rivers then
-		error('Error: There is no data about rivers being passed to "ApplyToHeightmap" function')
-	end
-
-	for x,row in pairs(rivers) do
-		for y,height in pairs(row) do
-			if Heightmap[x] and Heightmap[x][y] then
-				Heightmap[x][y] = height - depth
-				if Heightmap[x][y] < 0 then
-					Heightmap[x][y] = 0
-				end
-			end
-		end
-	end
-end
-
-
-return module
+return setmetatable(
+	{new = object_constructor},
+	{__newindex = function()
+		error("RiverGenerator: Attempt to edit a read-only wrapper! Make sure that you create a new object first")
+	end}
+)

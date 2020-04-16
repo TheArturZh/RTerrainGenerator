@@ -30,11 +30,11 @@ local TerrainDescriptorBase = {
 
 	,status = "Uninitialized"
 
-	--[[
-	,Heightmap = {}
-	,rivers = {}
-	,lakes  = {}
-	,trees  = {}
+	--[[ Following will be added after initialization:
+	,Heightmap = {...}
+	,rivers = {...}
+	,lakes  = {...}
+	,trees  = {...}
 	]]--
 }
 
@@ -46,7 +46,9 @@ TerrainDescriptorBase.new = object_constructor
 
 function TerrainDescriptorBase.UpdateStatus(self,string_status)
 	self.status = string_status
-	wait()
+	if string_status ~= "Initialized" then
+		wait()
+	end
 end
 
 local function ApplyHeightmapSteps(Heightmap, step)
@@ -56,7 +58,24 @@ local function ApplyHeightmapSteps(Heightmap, step)
 
 		for x = 1, width do
 			for y = 1, height do
-				Heightmap[x][y] = Utils.round(Heightmap[x][y]/step) * step
+				Heightmap[x][y] = math.floor(Heightmap[x][y]/step) * step
+			end
+		end
+	end
+end
+
+local function ApplyRiversToHeightmap(Heightmap,depth,rivers)
+	if not rivers then
+		error('Error: There is no data about rivers being passed to "ApplyToHeightmap" function')
+	end
+
+	for x,row in pairs(rivers) do
+		for y,height in pairs(row) do
+			if Heightmap[x] and Heightmap[x][y] then
+				Heightmap[x][y] = height - depth
+				if Heightmap[x][y] < 0 then
+					Heightmap[x][y] = 0
+				end
 			end
 		end
 	end
@@ -84,8 +103,12 @@ TerrainDescriptorBase.Initialize = function(self)
 
 	self:UpdateStatus("Generating rivers and lakes")
 
-	local rivers, lakes = RiverGenerator.Generate(Heightmap, 5, self.water_level, seed)
-	RiverGenerator.ApplyToHeightmap(Heightmap, self.tile_height_step, rivers)
+	local RiverGeneratorObj = RiverGenerator.new()
+	RiverGeneratorObj.seed = self.seed
+	RiverGeneratorObj.water_level = self.water_level
+
+	local rivers, lakes = RiverGeneratorObj:Generate(Heightmap, 5, self.water_level, seed)
+	ApplyRiversToHeightmap(Heightmap, self.tile_height_step, rivers)
 
 	self:UpdateStatus("Generating trees")
 
@@ -195,6 +218,13 @@ TerrainDescriptorBase.Initialize = function(self)
 	self.trees = trees
 	self.rivers = rivers
 	self.lakes = lakes
+
+	self:UpdateStatus("Initialized")
 end
 
-return {new = object_constructor}
+return setmetatable(
+	{new = object_constructor},
+	{__newindex = function()
+		error("TerrainDescriptor: Attempt to edit a read-only wrapper! Make sure that you create a new object first")
+	end}
+)
