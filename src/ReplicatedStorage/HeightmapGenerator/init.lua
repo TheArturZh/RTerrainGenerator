@@ -1,43 +1,13 @@
 local public = {}
 
 local PerlinNoise = require(script.PerlinNoise)
-
-local function InverseLerp(from, to, value)
-	if from < to then
-		if value < from then
-			return 0
-		end
-
-		if value > to then
-			return 1
-		end
-
-		value = value - from
-		value = value/(to - from)
-		return value
-	end
-
-	if from <= to then
-		return 0
-	end
-
-	if value < to then
-		return 1
-	end
-
-	if value > from then
-        return 0
-	end
-
-	return 1.0 - ((value - to) / (from - to))
-end
+local Utils = require(script.Parent.Utils)
 
 --amplitude, frequency, exp_distr, warped, bidirectional
 local octave_settings = {
 	{1,1,true,true,true},
 	{0.5,2,true,true,true},
-	{0.3,4,true,true,true},
-	--{0.02,8,false,true,false}
+	{0.3,4,true,true,true}
 }
 
 function public.GenerateHeightmap(offsetX,offsetY,width,height,scale,octaves,persistance,lacunarity)
@@ -80,7 +50,7 @@ function public.GenerateHeightmap(offsetX,offsetY,width,height,scale,octaves,per
 
 	for x = 1,width do
 		for y = 1,height do
-			heightmap[x][y] = InverseLerp(min_noize_height,max_noize_height,heightmap[x][y])
+			heightmap[x][y] = Utils.inverse_lerp(min_noize_height,max_noize_height,heightmap[x][y])
 		end
 	end
 
@@ -145,7 +115,7 @@ function public.GenerateWithDomainWarping(offsetX,offsetY,width,height,scale,oct
 
 	for x = 1,width do
 		for y = 1,height do
-			heightmap[x][y] = InverseLerp(min_noize_height,max_noize_height,heightmap[x][y])
+			heightmap[x][y] = Utils.inverse_lerp(min_noize_height,max_noize_height,heightmap[x][y])
 		end
 	end
 
