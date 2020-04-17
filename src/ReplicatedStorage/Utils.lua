@@ -2,7 +2,7 @@ local module = {}
 
 -- Returned value: Number in range 0-255 (8-bit value contained in a double)
 -- Takes in a set of numbers (Amount of parameters should be >0)
-function module.SimpleHash(NumSeed, ...)
+function module.simple_hash(NumSeed, ...)
 	if type(NumSeed) ~= "number" then
 		error("Failed to generate a hash: a seed should be a number")
 	end
@@ -19,6 +19,36 @@ function module.SimpleHash(NumSeed, ...)
 	local hash = bit32.rrotate(NumSeed,Displacement) % 256
 
 	return hash
+end
+
+function module.inverse_lerp(from, to, value)
+	if from < to then
+		if value < from then
+			return 0
+		end
+
+		if value > to then
+			return 1
+		end
+
+		value = value - from
+		value = value/(to - from)
+		return value
+	end
+
+	if from <= to then
+		return 0
+	end
+
+	if value < to then
+		return 1
+	end
+
+	if value > from then
+        return 0
+	end
+
+	return 1.0 - ((value - to) / (from - to))
 end
 
 function module.turn_vector2(v2, angle)
