@@ -1,67 +1,24 @@
-local public = {}
+local module = {}
 
 local PerlinNoise = require(script.PerlinNoise)
 local Utils = require(script.Parent.Utils)
 
---amplitude, frequency, exp_distr, warped, bidirectional
+--{ amplitude, frequency, exp_distr, warped, bidirectional }
 local octave_settings = {
 	{1,1,true,true,true},
 	{0.5,2,true,true,true},
 	{0.3,4,true,true,true}
 }
 
-function public.GenerateHeightmap(offsetX,offsetY,width,height,scale,octaves,persistance,lacunarity)
+function module.Generate(offsetX,offsetY,width,height,scale,ignore_warping)
 	local heightmap = {}
 
-	local max_noize_height = -math.huge
-	local min_noize_height = math.huge
+	local warp_map_x, warp_map_y
 
-	for x = 1, width do
-
-		heightmap[x] = {}
-
-		for y = 1, height do
-
-			local amplitude = 1
-			local frequency = 1
-			local noise_height = 0
-
-			for i=1,octaves do
-				local sampleX = (x+offsetX) / scale * frequency
-				local sampleY = (y+offsetY) / scale * frequency
-
-				local noise_val = PerlinNoise.Noise2DExpDistr(sampleX,sampleY) * 2 - 1
-				noise_height = noise_height + noise_val * amplitude
-
-				amplitude = amplitude * persistance
-				frequency = frequency * lacunarity
-			end
-
-			if noise_height > max_noize_height then
-				max_noize_height = noise_height
-			end
-			if noise_height < min_noize_height then
-				min_noize_height = noise_height
-			end
-
-			heightmap[x][y] = noise_height
-		end
+	if not ignore_warping then
+		warp_map_x = module.Generate(offsetX+260,offsetY+260,width,height,scale,true)
+		warp_map_y = module.Generate(offsetX+255,offsetY+255,width,height,scale,true)
 	end
-
-	for x = 1,width do
-		for y = 1,height do
-			heightmap[x][y] = Utils.inverse_lerp(min_noize_height,max_noize_height,heightmap[x][y])
-		end
-	end
-
-	return heightmap
-end
-
-function public.GenerateWithDomainWarping(offsetX,offsetY,width,height,scale,octaves,persistance,lacunarity)
-	local heightmap = {}
-
-	local fbmX = public.GenerateHeightmap(offsetX+260,offsetY+260,width,height,scale,4,persistance,lacunarity)
-	local fbmY = public.GenerateHeightmap(offsetX+255,offsetY+255,width,height,scale,4,persistance,lacunarity)
 
 	local max_noize_height = -math.huge
 	local min_noize_height = math.huge
@@ -80,12 +37,12 @@ function public.GenerateWithDomainWarping(offsetX,offsetY,width,height,scale,oct
 
 				local sampleX, sampleY
 
-				if octave[4] then
-					sampleX = (x+offsetX+fbmX[x][y]*15) / scale * frequency
-					sampleY = (y+offsetY+fbmY[x][y]*15) / scale * frequency
+				if octave[4] and not ignore_warping then
+					sampleX = (x + offsetX + warp_map_x[x][y]*15) / scale * frequency
+					sampleY = (y + offsetY + warp_map_y[x][y]*15) / scale * frequency
 				else
-					sampleX = (x+offsetX) / scale * frequency
-					sampleY = (y+offsetY) / scale * frequency
+					sampleX = (x + offsetX) / scale * frequency
+					sampleY = (y + offsetY) / scale * frequency
 				end
 
 				local noise_val
@@ -122,4 +79,4 @@ function public.GenerateWithDomainWarping(offsetX,offsetY,width,height,scale,oct
 	return heightmap
 end
 
-return public
+return module

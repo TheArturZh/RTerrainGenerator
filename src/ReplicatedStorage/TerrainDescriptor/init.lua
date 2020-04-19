@@ -98,7 +98,7 @@ TerrainDescriptorBase.Initialize = function(self)
 
 	self:UpdateStatus("Generating heightmap")
 
-	local Heightmap = HeightmapGenerator.GenerateWithDomainWarping(offsetX,offsetY,self.width,self.height,32,4,0.5,2)
+	local Heightmap = HeightmapGenerator.Generate(offsetX,offsetY,self.width,self.height,32)
 	Falloff.Apply(Heightmap, self.falloff_distance)
 	ApplyHeightmapSteps(Heightmap, self.tile_height_step)
 
