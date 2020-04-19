@@ -68,7 +68,7 @@ function module.Noise2D(x, y)
     local fade_x = fade(x_offset)
 
 	return lerp(
-		 fade(y)
+		 fade(y_offset)
 		,lerp(
              fade_x
 			,grad(AA, x_offset, y_offset)
@@ -102,7 +102,7 @@ function module.Noise2DExpDistr(x, y)
     local fade_x = fade(x_offset)
 
 	return lerp(
-		 fade(y)
+		 fade(y_offset)
 		,lerp(
              fade_x
 			,grad(AA, x_offset, y_offset) * mag_distr_t[AA % 256]
