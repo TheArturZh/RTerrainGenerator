@@ -6,10 +6,12 @@ local TerrainBuilder = require(ReplicatedStorage.TerrainBuilder)
 
 local width, height = 128,128
 
-local init_time = tick()
+local start_init_time = tick()
 
 local Terrain = TerrainDescriptor.new()
 Terrain:Initialize()
-TerrainBuilder.Build(Terrain.Heightmap,Terrain.rivers,Terrain.lakes,Terrain.trees,workspace,-64*40, -64*40)
 
-print("Map has been generated in "..tostring(tick()-init_time).." seconds")
+local TerrainBuilderObj = TerrainBuilder.new()
+TerrainBuilderObj:Build(Terrain,nil,-width/2*40,-height/2*40)
+
+print("Map has been generated in "..tostring(tick()-start_init_time).." seconds")

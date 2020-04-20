@@ -226,6 +226,22 @@ TerrainDescriptorBase.Initialize = function(self)
 	self:UpdateStatus("Initialized")
 end
 
+function TerrainDescriptorBase.get_water_surface_level(self,x,y)
+	if self.rivers[x] and self.rivers[x][y] then
+		return self.rivers[x][y]
+	end
+
+	if self.lakes[x] and self.lakes[x][y] then
+		return self.lakes[x][y]
+	end
+
+	if self.Heightmap[x] and self.Heightmap[x][y] and self.Heightmap[x][y] < self.water_level then
+		return self.water_level
+	end
+
+	return nil
+end
+
 return setmetatable(
 	{new = object_constructor},
 	{__newindex = function()

@@ -1,39 +1,37 @@
-local module = {}
-
 local Colorset = require(script.Parent.Colorset)
 local Utils = require(script.Parent.Utils)
 
-module.TileSide = 20
-module.TileHeight = 5
-module.HeightRange = 400
-module.SlopeLength = 3
-module.WaterSlopeLength = 3
+local TerrainBuilderBase = {
+	 TileSide = 20
+	,TileHeight = 5
+	,HeightRange = 400
+	,SlopeLength = 3
+	,WaterSlopeLength = 3
 
-module.HugeTileSide = 40
+	,HugeTileSide = 40
 
-module.water_color = Colorset.colors.water
-module.water_level = 0.3
+	,water_color = Colorset.colors.water
 
-module.water_plane_y_offset  = -0.5
-module.water_plane_thickness = 0.1
+	,water_plane_y_offset  = -0.5
+	,water_plane_thickness = 0.1
+}
 
-if script.Parent:FindFirstChild("Meshes") then
-	module.tree_meshes = script.Parent.Meshes.Trees:GetChildren()
-else
-	module.tree_meshes = {}
+local object_constructor = function()
+	local object = {}
+
+	return setmetatable(object, {__index = TerrainBuilderBase})
 end
 
-local tile_height_step = 1/(module.HeightRange/module.TileHeight)
-
 local function compare(v1,v2)
-	if v2 - v1 >= (tile_height_step - 0.001) then
+	--should'nt be compared directly because of the way doubles behave
+	if v2 - v1 >= 0.001 then
 		return 1
 	end
 
 	return 0
 end
 
-local function HashSurroundings(Heightmap,x,y,map_width,map_height)
+local function HashSurroundings(Heightmap,x,y)
 	local noise_val = Heightmap[x][y]
 	local side_hash = 0
 
@@ -85,42 +83,26 @@ local function HashSurroundings(Heightmap,x,y,map_width,map_height)
 	return side_hash, corner_hash
 end
 
-local function get_val(Heightmap,rivers,lakes,x,y)
-	if rivers[x] and rivers[x][y] then
-		return rivers[x][y]
-	end
-
-	if lakes[x] and lakes[x][y] then
-		return lakes[x][y]
-	end
-
-	if Heightmap[x] and Heightmap[x][y] and Heightmap[x][y] < module.water_level then
-		return module.water_level
-	end
-
-	return nil
-end
-
-local function GetSurroundings_Water(Heightmap,rivers,lakes,x,y,map_width,map_height)
-	local noise_val = rivers[x][y]
+local function GetSurroundings_Water(TerrainDescriptor,x,y)
+	local noise_val = TerrainDescriptor.rivers[x][y]
 	local sides = {}
 
-	local compare_val = get_val(Heightmap,rivers,lakes,x+1,y)
+	local compare_val = TerrainDescriptor:get_water_surface_level(x+1,y)
 	if compare_val and compare_val - noise_val < -0.001 then
 		sides[3] = noise_val-compare_val
 	end
 
-	compare_val = get_val(Heightmap,rivers,lakes,x-1,y)
+	compare_val = TerrainDescriptor:get_water_surface_level(x-1,y)
 	if compare_val and compare_val - noise_val < -0.001 then
 		sides[1] = noise_val-compare_val
 	end
 
-	compare_val = get_val(Heightmap,rivers,lakes,x,y+1)
+	compare_val = TerrainDescriptor:get_water_surface_level(y+1)
 	if compare_val and compare_val - noise_val < -0.001 then
 		sides[2] = noise_val-compare_val
 	end
 
-	compare_val = get_val(Heightmap,rivers,lakes,x,y-1)
+	compare_val = TerrainDescriptor:get_water_surface_level(x,y-1)
 	if compare_val and compare_val - noise_val < -0.001 then
 		sides[0] = noise_val-compare_val
 	end
@@ -128,8 +110,8 @@ local function GetSurroundings_Water(Heightmap,rivers,lakes,x,y,map_width,map_he
 	return sides
 end
 
-local function apply_water_visual_properties(part)
-	part.Color = module.water_color
+function TerrainBuilderBase.apply_water_visual_properties(self,part)
+	part.Color = self.water_color
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.CastShadow = false
@@ -138,14 +120,14 @@ local function apply_water_visual_properties(part)
 	part.Material = Enum.Material.Glass
 end
 
-local function apply_water_properties(part)
-	apply_water_visual_properties(part)
+function TerrainBuilderBase.apply_water_properties(self,part)
+	self:apply_water_visual_properties(part)
 
 	part.CanCollide = false
 	part.Anchored = true
 end
 
-local function generate_water_plane(container,level,width,height,offsetX,offsetY)
+function TerrainBuilderBase.generate_water_plane(self,container,level,width,height,offsetX,offsetY)
 	offsetX = offsetX or 0
 	offsetY = offsetY or 0
 
@@ -155,8 +137,8 @@ local function generate_water_plane(container,level,width,height,offsetX,offsetY
 
 	-- Because of 2048x2048x2048 size cap
 	-- water plane should be split on parts
-	local water_width = width*module.HugeTileSide
-	local water_height = height*module.HugeTileSide
+	local water_width = width * self.HugeTileSide
+	local water_height = height * self.HugeTileSide
 
 	local countX, countY
 	--Size of the part of water plane
@@ -170,14 +152,14 @@ local function generate_water_plane(container,level,width,height,offsetX,offsetY
 
 	local water_plane = Instance.new("Part")
 	water_plane.Name = "WaterPlaneSegment"
-	water_plane.Size = Vector3.new(part_sizeX,module.water_plane_thickness,part_sizeY)
+	water_plane.Size = Vector3.new(part_sizeX, self.water_plane_thickness, part_sizeY)
 
-	apply_water_properties(water_plane)
+	self:apply_water_properties(water_plane)
 
 	for x=1,countX do
 		for y=1,countY do
 			local segment = water_plane:Clone()
-			segment.Position = Vector3.new(part_sizeX*(x-1+0.5) - module.HugeTileSide + offsetX,(level*module.HeightRange)+module.water_plane_y_offset,part_sizeY*(y-1+0.5) - module.HugeTileSide + offsetY)
+			segment.Position = Vector3.new(part_sizeX*(x-1+0.5) - self.HugeTileSide + offsetX,(level*self.HeightRange)+self.water_plane_y_offset,part_sizeY*(y-1+0.5) - self.HugeTileSide + offsetY)
 			segment.Parent = water_plane_group
 		end
 	end
@@ -185,18 +167,28 @@ local function generate_water_plane(container,level,width,height,offsetX,offsetY
 	water_plane:Destroy()
 end
 
-function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,width,height)
-	if not Heightmap then
-		error("Heightmap doesn't exist!")
+-- self,Heightmap,rivers,lakes,trees,container,offsetX,offsetY,width,height
+function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offsetY)
+	if TerrainDescriptor.status ~= "Initialized" then
+		error("Failed to build a map: TerrainDescriptor isn't initialized!")
 	end
+
+	local tile_height_step = 1 / (self.HeightRange / self.TileHeight)
 
 	local RandomGen = Random.new(0)
 
 	local offsetX = offsetX or 0
 	local offsetY = offsetY or 0
 
-	local map_width = #Heightmap
-	local map_height = Heightmap[1] and #Heightmap[1] or 0
+	local Heightmap = TerrainDescriptor.Heightmap
+	local lakes = TerrainDescriptor.lakes
+	local rivers = TerrainDescriptor.rivers
+	local trees = TerrainDescriptor.trees
+
+	local water_level = TerrainDescriptor.water_level
+
+	local map_width = TerrainDescriptor.width
+	local map_height = TerrainDescriptor.height
 
 	if not container then
 		warn("No world container specified, creating one in game.Workspace")
@@ -216,7 +208,7 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 	local ProcessedHeightmap = {}
 
 	--Step 1
-	for height = 0, module.HeightRange/module.TileHeight do
+	for height = 0, self.HeightRange/self.TileHeight do
 
 		ProcessedHeightmap[height] = {}
 
@@ -254,8 +246,8 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 	end
 
 	--Step 2
-	for height = 0, module.HeightRange/module.TileHeight do
-		for x = 1,map_width-1 do
+	for height = 0, self.HeightRange / self.TileHeight do
+		for x = 1, map_width-1 do
 			for y,row in pairs(ProcessedHeightmap[height][x]) do
 
 				for x_merge = x+1, map_width do
@@ -282,15 +274,15 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 	--Render huge tiles
 	local count = 0
 
-	for height = 0, module.HeightRange / module.TileHeight do
+	for height = 0, self.HeightRange / self.TileHeight do
 		local picked_color = Colorset.pickColor(height * tile_height_step)
 		for x = 1, map_width do
 			for y,row in pairs(ProcessedHeightmap[height][x]) do
 
-				local XSize = (row[2] or 1) * module.HugeTileSide
-				local YSize = (row[1]-y+1) * module.HugeTileSide
+				local XSize = (row[2] or 1) * self.HugeTileSide
+				local YSize = (row[1]-y+1) * self.HugeTileSide
 
-				local HeightPos = (height-0.5)*module.TileHeight
+				local HeightPos = (height - 0.5) * self.TileHeight
 
 				local X_Tiles = math.ceil(XSize/2048)
 				local Y_Tiles = math.ceil(YSize/2048)
@@ -298,16 +290,16 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 				XSize = XSize / X_Tiles
 				YSize = YSize / Y_Tiles
 
-				for x_tile = 1,X_Tiles do
+				for x_tile = 1, X_Tiles do
 
-					local XPos = (x-1) * module.HugeTileSide + XSize/2 + XSize * (x_tile-1) + offsetX
+					local XPos = (x-1) * self.HugeTileSide + XSize/2 + XSize * (x_tile-1) + offsetX
 
 					for y_tile = 1,Y_Tiles do
 						count = count + 1
-						local YPos = (y-1) * module.HugeTileSide + YSize/2 + YSize * (y_tile-1) + offsetY
+						local YPos = (y-1) * self.HugeTileSide + YSize/2 + YSize * (y_tile-1) + offsetY
 
 						local Tile = Instance.new("Part")
-						Tile.Size = Vector3.new(XSize,module.TileHeight,YSize)
+						Tile.Size = Vector3.new(XSize,self.TileHeight,YSize)
 						Tile.Anchored = true
 						Tile.CFrame = CFrame.new(XPos,HeightPos,YPos)
 						Tile.Color = picked_color
@@ -325,16 +317,16 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 	wait()
 	local wedge_parts_y = {}
 
-	for x = 1,map_width do
+	for x = 1, map_width do
 		wedge_parts_y[x] = {}
 
 		local row_hash
 		local row_height
 		local row_length
 
-		for y = 1,map_height do
+		for y = 1, map_height do
 
-			local hash = HashSurroundings(Heightmap,x,y,map_width,map_height)
+			local hash = HashSurroundings(Heightmap,x,y)
 			hash = math.floor(hash / 0b0100)
 
 			local height = Heightmap[x][y]
@@ -345,7 +337,7 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 					row_height = height
 					row_length = 1
 				elseif height ~= row_height or hash ~= row_hash then
-					wedge_parts_y[x][y-row_length] = {y-1,row_hash,row_height}
+					wedge_parts_y[x][y-row_length] = {y-1, row_hash, row_height}
 
 					row_hash = hash
 					row_height = height
@@ -354,18 +346,17 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 					row_length = row_length + 1
 				end
 			elseif row_hash then
-				wedge_parts_y[x][y-row_length] = {y-1,row_hash,row_height}
+				wedge_parts_y[x][y-row_length] = {y-1, row_hash, row_height}
 
 				row_hash = nil
 			end
 
 			if row_hash and y == map_height then
-				wedge_parts_y[x][y-row_length+1] = {y,row_hash,row_height}
+				wedge_parts_y[x][y-row_length+1] = {y, row_hash, row_height}
 			end
 
 		end
 	end
-
 
 
 	for x=1, map_width do
@@ -376,16 +367,16 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 			local hash = row[2]
 
 			--Size
-			local SizeX = module.HugeTileSide * (row[1] - y + 1)
-			local SizeY = module.TileHeight
-			local SizeZ = module.SlopeLength
+			local SizeX = self.HugeTileSide * (row[1] - y + 1)
+			local SizeY = self.TileHeight
+			local SizeZ = self.SlopeLength
 
-			local SizeVector = Vector3.new(SizeX,SizeY,SizeZ)
+			local SizeVector = Vector3.new(SizeX, SizeY, SizeZ)
 
 			--Position of wedge in workspace
 			local workspaceX
-			local workspaceY = row[3] * module.HeightRange + module.TileHeight/2
-			local workspaceZ = (y-1) * module.HugeTileSide + SizeX/2 + offsetY
+			local workspaceY = row[3] * self.HeightRange + self.TileHeight/2
+			local workspaceZ = (y-1) * self.HugeTileSide + SizeX/2 + offsetY
 
 			local wedge_part = Instance.new("WedgePart")
 			wedge_part.Anchored = true
@@ -393,10 +384,10 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 
 			if hash == 0b10 or hash == 0b11 then
 				wedge_part.Rotation = Vector3.new(0,90,0)
-				workspaceX = x * module.HugeTileSide - SizeZ/2 + offsetX
+				workspaceX = x * self.HugeTileSide - SizeZ/2 + offsetX
 			else
 				wedge_part.Rotation = Vector3.new(0,-90,0)
-				workspaceX = (x-1) * module.HugeTileSide + SizeZ/2 + offsetX
+				workspaceX = (x-1) * self.HugeTileSide + SizeZ/2 + offsetX
 			end
 
 			wedge_part.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
@@ -410,7 +401,7 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 				wedge_part2.Anchored = true
 				wedge_part2.Rotation = Vector3.new(0,-90,0)
 				wedge_part2.Size = SizeVector
-				local workspaceX = (x-1) * module.HugeTileSide + SizeZ/2 + offsetX
+				local workspaceX = (x-1) * self.HugeTileSide + SizeZ/2 + offsetX
 				wedge_part2.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
 				wedge_part2.Color = picked_color
 				wedge_part2.Parent = container
@@ -432,7 +423,7 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 
 		for x = 1,map_width do
 
-			local hash = HashSurroundings(Heightmap,x,y,map_width,map_height)
+			local hash = HashSurroundings(Heightmap,x,y)
 			hash = hash % 0b0100
 
 			local height = Heightmap[x][y]
@@ -471,24 +462,24 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 			slope_count = slope_count + 1
 
 			--Size
-			local SizeX = module.HugeTileSide * (row[1] - x + 1)
-			local SizeY = module.TileHeight
-			local SizeZ = module.SlopeLength
+			local SizeX = self.HugeTileSide * (row[1] - x + 1)
+			local SizeY = self.TileHeight
+			local SizeZ = self.SlopeLength
 			local SizeVector = Vector3.new(SizeX,SizeY,SizeZ)
 
 			--Position of wedge in workspace
-			local workspaceX = (x-1) * module.HugeTileSide + SizeX/2 + offsetX
-			local workspaceY = row[3] * module.HeightRange + module.TileHeight/2
+			local workspaceX = (x-1) * self.HugeTileSide + SizeX/2 + offsetX
+			local workspaceY = row[3] * self.HeightRange + self.TileHeight/2
 			local workspaceZ
 
 			local wedge_part = Instance.new("WedgePart")
 
 			if hash == 0b10 or hash == 0b11 then
 				wedge_part.Rotation = Vector3.new(0,0,0)
-				workspaceZ = y * module.HugeTileSide - SizeZ/2 + offsetY
+				workspaceZ = y * self.HugeTileSide - SizeZ/2 + offsetY
 			else
 				wedge_part.Rotation = Vector3.new(0,180,0)
-				workspaceZ = (y-1) * module.HugeTileSide + SizeZ/2 + offsetY
+				workspaceZ = (y-1) * self.HugeTileSide + SizeZ/2 + offsetY
 			end
 
 			wedge_part.Anchored = true
@@ -500,7 +491,7 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 			if hash == 0b11 then
 				slope_count = slope_count + 1
 
-				local workspaceZ = (y-1) * module.HugeTileSide + SizeZ/2 + offsetY
+				local workspaceZ = (y-1) * self.HugeTileSide + SizeZ/2 + offsetY
 
 				local wedge_part2 = Instance.new("WedgePart")
 				wedge_part2.Anchored = true
@@ -517,7 +508,7 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 	print("Count: "..tostring(count).." instead of "..tostring(map_width*map_height)..", compression rate: "..tostring( (1-(count/(map_width*map_height)))*100 ).."%")
 	print("Slopes: "..tostring(slope_count)..", Total: "..tostring(slope_count + count))
 
-	generate_water_plane(container,module.water_level,map_width,map_height,offsetX,offsetY)
+	self:generate_water_plane(container,water_level,map_width,map_height,offsetX,offsetY)
 
 	wait()
 	--Generate water plane for lakes
@@ -544,13 +535,13 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 						end
 					elseif part_length then
 						generated_lake_planes = generated_lake_planes + 1
-						generate_water_plane(container,part_height_pos,1,part_length,x*module.HugeTileSide+offsetX,(y-part_length)*module.HugeTileSide+offsetY)
+						self:generate_water_plane(container,part_height_pos,1,part_length,x*self.HugeTileSide+offsetX,(y-part_length)*self.HugeTileSide+offsetY)
 						part_length = nil
 					end
 
 					if part_length and y == map_height then
 						generated_lake_planes = generated_lake_planes + 1
-						generate_water_plane(container,part_height_pos,1,part_length,x*module.HugeTileSide+offsetX,(y-part_length+1)*module.HugeTileSide+offsetY)
+						self:generate_water_plane(container,part_height_pos,1,part_length,x*self.HugeTileSide+offsetX,(y-part_length+1)*self.HugeTileSide+offsetY)
 					end
 
 				end
@@ -565,63 +556,63 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 
 	wait()
 	--Generate river water plane
-	for x=1,map_width do
+	for x=1, map_width do
 		if rivers[x] then
-			for y=1,map_height do
+			for y=1, map_height do
 
 				local height = rivers[x][y]
 
 				if height then
-					generate_water_plane(container,height,1,1,x*module.HugeTileSide+offsetX,y*module.HugeTileSide+offsetY)
+					self:generate_water_plane(container,height,1,1,x*self.HugeTileSide+offsetX,y*self.HugeTileSide+offsetY)
 
-					local sides = GetSurroundings_Water(Heightmap,rivers,lakes,x,y,map_width,map_height)
+					local sides = GetSurroundings_Water(TerrainDescriptor,x,y)
 
 					for side,height_diff in pairs(sides) do
 						local wedge_part = Instance.new("WedgePart")
 						wedge_part.Anchored = true
-						wedge_part.Size = Vector3.new(module.HugeTileSide,module.TileHeight,module.WaterSlopeLength)
+						wedge_part.Size = Vector3.new(self.HugeTileSide, self.TileHeight, self.WaterSlopeLength)
 						wedge_part.Orientation = Vector3.new(0,90*side,0)
 
 						local workspaceX = offsetX
-						local workspaceY = height * module.HeightRange - wedge_part.Size.Y/2 + module.water_plane_y_offset + module.water_plane_thickness/2
+						local workspaceY = height * self.HeightRange - wedge_part.Size.Y/2 + self.water_plane_y_offset + self.water_plane_thickness/2
 						local workspaceZ = offsetY
 
 						if side == 0 then
-							workspaceX = workspaceX + (x-0.5) * module.HugeTileSide
-							workspaceZ = workspaceZ + (y-1) * module.HugeTileSide - wedge_part.Size.Z/2
+							workspaceX = workspaceX + (x-0.5) * self.HugeTileSide
+							workspaceZ = workspaceZ + (y-1) * self.HugeTileSide - wedge_part.Size.Z/2
 						elseif side == 1 then
-							workspaceX = workspaceX + (x-1) * module.HugeTileSide - wedge_part.Size.Z/2
-							workspaceZ = workspaceZ + (y-0.5) * module.HugeTileSide
+							workspaceX = workspaceX + (x-1) * self.HugeTileSide - wedge_part.Size.Z/2
+							workspaceZ = workspaceZ + (y-0.5) * self.HugeTileSide
 						elseif side == 2 then
-							workspaceX = workspaceX + (x-0.5) * module.HugeTileSide
-							workspaceZ = workspaceZ + (y) * module.HugeTileSide + wedge_part.Size.Z/2
+							workspaceX = workspaceX + (x-0.5) * self.HugeTileSide
+							workspaceZ = workspaceZ + (y) * self.HugeTileSide + wedge_part.Size.Z/2
 						elseif side == 3 then
-							workspaceX = workspaceX + (x) * module.HugeTileSide + wedge_part.Size.Z/2
-							workspaceZ = workspaceZ + (y-0.5) * module.HugeTileSide
+							workspaceX = workspaceX + (x) * self.HugeTileSide + wedge_part.Size.Z/2
+							workspaceZ = workspaceZ + (y-0.5) * self.HugeTileSide
 						end
 
-						wedge_part.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
+						wedge_part.Position = Vector3.new(workspaceX, workspaceY, workspaceZ)
 						wedge_part.CanCollide = false
 
-						apply_water_properties(wedge_part)
+						self:apply_water_properties(wedge_part)
 
 						wedge_part.Parent = container
 
-						local height_diff_step = Utils.round(height_diff/tile_height_step)
+						local height_diff_step = Utils.round(height_diff / tile_height_step)
 
 						if height_diff_step > 1 then
 							local vertical = Instance.new("Part")
 							vertical.Anchored = true
-							vertical.Size = Vector3.new(module.HugeTileSide,module.TileHeight*(height_diff_step-1),module.WaterSlopeLength)
+							vertical.Size = Vector3.new(self.HugeTileSide, self.TileHeight*(height_diff_step-1), self.WaterSlopeLength)
 							vertical.Orientation = wedge_part.Orientation
 
 							local workspaceX = wedge_part.Position.X
 							local workspaceY = wedge_part.Position.Y - wedge_part.Size.Y/2 - vertical.Size.Y/2
 							local workspaceZ = wedge_part.Position.Z
 
-							vertical.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
+							vertical.Position = Vector3.new(workspaceX, workspaceY, workspaceZ)
 
-							apply_water_properties(vertical)
+							self:apply_water_properties(vertical)
 
 							vertical.CanCollide = false
 							vertical.Parent = container
@@ -634,28 +625,39 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 
 	local HugeTileSizeCoeff = 2
 
-	if #module.tree_meshes == 0 then
+	--Get tree meshes
+	local tree_meshes = self.tree_meshes
+
+	if not tree_meshes then
+		if script.Parent:FindFirstChild("Meshes") then
+			tree_meshes = script.Parent.Meshes.Trees:GetChildren()
+		else
+			tree_meshes = {}
+		end
+	end
+
+	if #tree_meshes == 0 then
 		warn("No tree meshes found! Trees will not be generated.")
 	end
 
-	if type(trees) == "table" and #module.tree_meshes > 0 then
+	if type(trees) == "table" and #tree_meshes > 0 then
 		for x,row in pairs(trees) do
-			local HugeTileX = math.ceil(x/HugeTileSizeCoeff)
+			local HugeTileX = math.ceil(x / HugeTileSizeCoeff)
 
 			for y,check in pairs(row) do
-				local HugeTileY = math.ceil(y/HugeTileSizeCoeff)
+				local HugeTileY = math.ceil(y / HugeTileSizeCoeff)
 
 				if check then
 
-					local tree_pos = Vector3.new((x-0.5) * module.TileSide + offsetX, Heightmap[HugeTileX][HugeTileY] * module.HeightRange,(y-0.5) * module.TileSide + offsetY)
+					local tree_pos = Vector3.new((x-0.5) * self.TileSide + offsetX, Heightmap[HugeTileX][HugeTileY] * self.HeightRange,(y-0.5) * self.TileSide + offsetY)
 
-					local random_tree = RandomGen:NextInteger(1,#module.tree_meshes)
-					local tree = module.tree_meshes[random_tree]:Clone()
+					local random_tree = RandomGen:NextInteger(1,#tree_meshes)
+					local tree = tree_meshes[random_tree]:Clone()
 					tree.Anchored = true
 
 					--Random tree orientation
 					local tree_angle_y = RandomGen:NextInteger(1,360)
-					local new_offsets_v2 = Utils.turn_vector2(Vector2.new(tree.Position.X,tree.Position.Z),tree_angle_y)
+					local new_offsets_v2 = Utils.turn_vector2(Vector2.new(tree.Position.X,tree.Position.Z), tree_angle_y)
 					local new_tree_offsets = Vector3.new(
 						 new_offsets_v2.X
 						,tree.Position.Y
@@ -674,4 +676,9 @@ function module.Build(Heightmap,rivers,lakes,trees,container,offsetX,offsetY,wid
 
 end
 
-return module
+return setmetatable(
+	{new = object_constructor},
+	{__newindex = function()
+		error("TerrainBuilder: Attempt to edit a read-only wrapper! Make sure that you create a new object first")
+	end}
+)
