@@ -51,6 +51,10 @@ function module.inverse_lerp(from, to, value)
 	return 1.0 - ((value - to) / (from - to))
 end
 
+--[[
+	Important note: vector rotates in opposite direction of the Roblox part rotation
+	(negative angle should be used).
+]]
 function module.turn_vector2(v2, angle)
 	local angle_rad = angle/180 * math.pi
 
