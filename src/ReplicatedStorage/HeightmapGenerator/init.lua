@@ -1,23 +1,55 @@
-local module = {}
-
 local PerlinNoise = require(script.PerlinNoise)
 local Utils = require(script.Parent.Utils)
 
---{ amplitude, frequency, exp_distr, warped, bidirectional }
-local octave_settings = {
-	{1,1,true,true,true},
-	{0.5,2,true,true,true},
-	{0.3,4,true,true,true}
+local HeightmapGeneratorBase = {}
+
+--{ amplitude, frequency, exp_distr, bidirectional, warped }
+local octave_settings_default = {
+	 {1.0,1,true,true,true}
+	,{0.5,2,true,true,true}
+	,{0.3,4,true,true,true}
 }
 
-function module.Generate(offsetX,offsetY,width,height,scale,ignore_warping)
+local warp_octave_settings_default = {
+	 {1.000,1,true,true}
+	,{0.500,2,true,true}
+	,{0.250,4,true,true}
+	,{0.125,8,true,true}
+}
+
+local function object_constructor()
+	local object = {}
+	object.octave_settings = {}
+	object.warp_octave_settings = {}
+	setmetatable(object,{__index = HeightmapGeneratorBase})
+
+	return object
+end
+
+function HeightmapGeneratorBase.Generate(self,offsetX,offsetY,width,height,scale,generate_warp_map)
 	local heightmap = {}
 
 	local warp_map_x, warp_map_y
 
-	if not ignore_warping then
-		warp_map_x = module.Generate(offsetX+260,offsetY+260,width,height,scale,true)
-		warp_map_y = module.Generate(offsetX+255,offsetY+255,width,height,scale,true)
+	if not generate_warp_map then
+		warp_map_x = self:Generate(offsetX+260,offsetY+260,width,height,scale,true)
+		warp_map_y = self:Generate(offsetX+255,offsetY+255,width,height,scale,true)
+	end
+
+	local octave_settings
+
+	if generate_warp_map then
+		octave_settings = self.warp_octave_settings
+		if (not octave_settings) or #octave_settings == 0 then
+			warn("No warp map octaves found, using the default ones")
+			octave_settings = warp_octave_settings_default
+		end
+	else
+		octave_settings = self.octave_settings
+		if (not octave_settings) or #octave_settings == 0 then
+			warn("No heightmap octaves found, using the default ones")
+			octave_settings = octave_settings_default
+		end
 	end
 
 	local max_noize_height = -math.huge
@@ -37,7 +69,7 @@ function module.Generate(offsetX,offsetY,width,height,scale,ignore_warping)
 
 				local sampleX, sampleY
 
-				if octave[4] and not ignore_warping then
+				if octave[5] and not generate_warp_map then
 					sampleX = (x + offsetX + warp_map_x[x][y]*15) / scale * frequency
 					sampleY = (y + offsetY + warp_map_y[x][y]*15) / scale * frequency
 				else
@@ -52,7 +84,7 @@ function module.Generate(offsetX,offsetY,width,height,scale,ignore_warping)
 					noise_val = PerlinNoise.Noise2D(sampleX,sampleY)
 				end
 
-				if octave[5] then
+				if octave[4] then
 					noise_val = noise_val * 2 - 1
 				end
 
@@ -79,4 +111,9 @@ function module.Generate(offsetX,offsetY,width,height,scale,ignore_warping)
 	return heightmap
 end
 
-return module
+return setmetatable(
+	 {new = object_constructor}
+	,{__newindex = function()
+		error("HeightmapGenerator: Attempt to edit a read-only wrapper! Make sure that you create a new object first")
+	end}
+)
