@@ -365,7 +365,7 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 				break
 			end
 
-			if lowest_height < self.water_level then
+			if Heightmap[lowest_x][lowest_y] < self.water_level then
 				print("END: OCEAN LEVEL REACHED")
 				break
 			end
