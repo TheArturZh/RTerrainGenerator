@@ -595,7 +595,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 
 				local height = rivers[x][y]
 
-				if height then
+				if height and height > water_level then
 					self:generate_water_plane(container,height,1,1,x*self.HugeTileSide+offsetX,y*self.HugeTileSide+offsetY)
 
 					local sides = GetSurroundings_Water(TerrainDescriptor,x,y)
