@@ -1,5 +1,7 @@
 local module = {}
 
+local debug_messages = false
+
 local RiverGeneratorBase = {
 	--Default properties
 	 max_lifetime = 50
@@ -12,6 +14,12 @@ local RiverGeneratorBase = {
 local function object_constructor()
 	local new_object = {}
 	return setmetatable(new_object,{__index = RiverGeneratorBase})
+end
+
+local function debug_msg(...)
+	if debug_messages then
+		print(...)
+	end
 end
 
 RiverGeneratorBase.new = object_constructor
@@ -291,7 +299,7 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 		for lifetime=1, self.max_lifetime do
 
 			if posX <= 1 or posY <= 1 or posX >= map_width or posY >= map_height then
-				print("END: MAP BORDER MET")
+				debug_msg("END: MAP BORDER MET")
 				break
 			end
 
@@ -350,23 +358,23 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 
 			--This one shouldn't happen
 			if lowest_height > current_val then
-				print("END: NOWHERE TO FLOW")
+				debug_msg("END: NOWHERE TO FLOW")
 				break
 			end
 
 			if rivers[lowest_x] and rivers[lowest_x][lowest_y] then
-				print("END: MERGED WITH RIVER")
+				debug_msg("END: MERGED WITH RIVER")
 				break
 			end
 
 			if valleys[lowest_x][lowest_y] then
-				print("END: MERGED WITH LAKE")
+				debug_msg("END: MERGED WITH LAKE")
 				valley_to_lake(valleys,lakes,lowest_x,lowest_y)
 				break
 			end
 
 			if Heightmap[lowest_x][lowest_y] < self.water_level then
-				print("END: OCEAN LEVEL REACHED")
+				debug_msg("END: OCEAN LEVEL REACHED")
 				break
 			end
 
@@ -385,7 +393,7 @@ function RiverGeneratorBase.Generate(self, Heightmap)
 			rivers_put(posX,posY,lowest_height)
 
 			if lifetime == self.max_lifetime then
-				print("END: RIVER LIFETIME EXCEEDED")
+				debug_msg("END: RIVER LIFETIME EXCEEDED")
 			end
 
 		end
