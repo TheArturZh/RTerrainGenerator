@@ -28,13 +28,13 @@ ifeq ($(OS),Windows_NT)
 else
 	UNAME_S := $(shell uname -s)
 
-	ifeq ($(UNAME_S),Linux)
-		DETECTED_OS = Linux
-	endif
+ifeq ($(UNAME_S),Linux)
+	DETECTED_OS = Linux
+endif
 
-	ifeq ($(UNAME_S),Darwin)
-		DETECTED_OS = MacOS
-	endif
+ifeq ($(UNAME_S),Darwin)
+	DETECTED_OS = MacOS
+endif
 
 	ROJO = $(ToolsDir)/$(DETECTED_OS)/rojo-$(ROJO_VERSION)
 endif
@@ -65,8 +65,13 @@ ifeq ($(wildcard $(ROJO)),)
 	mkdir $(ToolsDir)/$(DETECTED_OS) || true
 
 	curl -4 -L $(Rojo_$(DETECTED_OS)_RELEASE_URL) --output $(ToolsDir)/rojo.zip
-	unzip $(ToolsDir)/rojo.zip -d $(ToolsDir)/$(DETECTED_OS)
+	unzip -o $(ToolsDir)/rojo.zip -d $(ToolsDir)/$(DETECTED_OS)
+
+ifeq ($(DETECTED_OS),Windows)
 	mv $(ToolsDir)/$(DETECTED_OS)/rojo.exe $(ROJO)
+else
+	mv $(ToolsDir)/$(DETECTED_OS)/rojo $(ROJO)
+endif
 
 	rm -f $(ToolsDir)/rojo.zip
 endif
