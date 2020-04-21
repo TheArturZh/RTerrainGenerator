@@ -1,4 +1,4 @@
-local Colorset = require(script.Parent.Colorset)
+local DefaultColorset = require(script.Parent.DefaultColorset)
 local Utils = require(script.Parent.Utils)
 
 local TerrainBuilderBase = {
@@ -10,10 +10,10 @@ local TerrainBuilderBase = {
 
 	,HugeTileSide = 40
 
-	,water_color = Colorset.colors.water
-
 	,water_plane_y_offset  = -0.5
 	,water_plane_thickness = 0.1
+
+	,Colorset = DefaultColorset
 }
 
 local object_constructor = function()
@@ -36,11 +36,11 @@ local function HashSurroundings(Heightmap,x,y)
 	local side_hash = 0
 
 	--[[
-	c2              c3
-	        X
-	<-------|--------Y
-	        V
-	c1              c4
+	c2         s2      c3
+  	           X
+	s3 <-------|--------Y s4
+	           V
+	c1         s1      c4
 	--]]
 	local corner_hash = 0b0000
 
@@ -111,7 +111,12 @@ local function GetSurroundings_Water(TerrainDescriptor,x,y)
 end
 
 function TerrainBuilderBase.apply_water_visual_properties(self,part)
-	part.Color = self.water_color
+	if self.Colorset.colors.water then
+		part.Color = self.Colorset.colors.water
+	else
+		part.Color = DefaultColorset.colors.water
+	end
+
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.CastShadow = false
@@ -156,10 +161,15 @@ function TerrainBuilderBase.generate_water_plane(self,container,level,width,heig
 
 	self:apply_water_properties(water_plane)
 
+	local posY = level * self.HeightRange + self.water_plane_y_offset
+
 	for x=1,countX do
 		for y=1,countY do
+			local posX = part_sizeX * (x-0.5) - self.HugeTileSide + offsetX
+			local posZ = part_sizeY * (y-0.5) - self.HugeTileSide + offsetY
+
 			local segment = water_plane:Clone()
-			segment.Position = Vector3.new(part_sizeX*(x-1+0.5) - self.HugeTileSide + offsetX,(level*self.HeightRange)+self.water_plane_y_offset,part_sizeY*(y-1+0.5) - self.HugeTileSide + offsetY)
+			segment.Position = Vector3.new(posX, posY, posZ)
 			segment.Parent = water_plane_group
 		end
 	end
@@ -171,6 +181,19 @@ end
 function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offsetY)
 	if TerrainDescriptor.status ~= "Initialized" then
 		error("Failed to build a map: TerrainDescriptor isn't initialized!")
+	end
+
+	if not rawget(self, "Colorset") then
+		print("No custom colorset passed, going to use a default one")
+	elseif not self.Colorset.colors.water then
+		warn("No water color specified in current colorset, going to use a default one (color)")
+	end
+
+	if not container then
+		warn("No world container specified, creating one in game.Workspace")
+		container = Instance.new("Model")
+		container.Name = "World"
+		container.Parent = workspace
 	end
 
 	local tile_height_step = 1 / (self.HeightRange / self.TileHeight)
@@ -190,13 +213,6 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 	local map_width = TerrainDescriptor.width
 	local map_height = TerrainDescriptor.height
 
-	if not container then
-		warn("No world container specified, creating one in game.Workspace")
-		container = Instance.new("Model")
-		container.Name = "World"
-		container.Parent = workspace
-	end
-
 	-- | Optimizing large flat tiles |
 	-- height = { x = {y1 = {y2,x_size}} }
 	-- step1: make y-axis rows (rows should be interrupted only by tiles at lower height)
@@ -208,7 +224,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 	local ProcessedHeightmap = {}
 
 	--Step 1
-	for height = 0, self.HeightRange/self.TileHeight do
+	for height = 0, self.HeightRange / self.TileHeight do
 
 		ProcessedHeightmap[height] = {}
 
@@ -275,7 +291,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 	local count = 0
 
 	for height = 0, self.HeightRange / self.TileHeight do
-		local picked_color = Colorset.pickColor(height * tile_height_step)
+		local picked_color = self.Colorset:pickColor(height * tile_height_step)
 		for x = 1, map_width do
 			for y,row in pairs(ProcessedHeightmap[height][x]) do
 
@@ -363,7 +379,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 		for y,row in pairs(wedge_parts_y[x]) do
 
 			slope_count = slope_count + 1
-			local picked_color = Colorset.pickColor(row[3])
+			local picked_color = self.Colorset:pickColor(row[3])
 			local hash = row[2]
 
 			--Size
@@ -484,7 +500,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 
 			wedge_part.Anchored = true
 			wedge_part.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
-			wedge_part.Color = Colorset.pickColor(row[3])
+			wedge_part.Color = self.Colorset:pickColor(row[3])
 			wedge_part.Size = SizeVector
 			wedge_part.Parent = container
 
@@ -498,7 +514,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 				wedge_part2.Rotation = Vector3.new(0,180,0)
 				wedge_part2.Size = SizeVector
 				wedge_part2.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
-				wedge_part2.Color = Colorset.pickColor(row[3])
+				wedge_part2.Color = self.Colorset:pickColor(row[3])
 				wedge_part2.Parent = container
 			end
 
@@ -523,6 +539,8 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 				local part_length
 				local part_height_pos
 
+				local posX = x * self.HugeTileSide + offsetX
+
 				for y = 1,map_height do
 					local height = lakes[x][y]
 
@@ -535,13 +553,18 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 						end
 					elseif part_length then
 						generated_lake_planes = generated_lake_planes + 1
-						self:generate_water_plane(container,part_height_pos,1,part_length,x*self.HugeTileSide+offsetX,(y-part_length)*self.HugeTileSide+offsetY)
+
+						local posY = (y-part_length) * self.HugeTileSide + offsetY
+						self:generate_water_plane(container,part_height_pos,1,part_length,posX,posY)
+
 						part_length = nil
 					end
 
 					if part_length and y == map_height then
 						generated_lake_planes = generated_lake_planes + 1
-						self:generate_water_plane(container,part_height_pos,1,part_length,x*self.HugeTileSide+offsetX,(y-part_length+1)*self.HugeTileSide+offsetY)
+
+						local posY = (y-part_length+1) * self.HugeTileSide + offsetY
+						self:generate_water_plane(container,part_height_pos,1,part_length,posX,posY)
 					end
 
 				end
@@ -649,11 +672,14 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 
 				if check then
 
-					local tree_pos = Vector3.new((x-0.5) * self.TileSide + offsetX, Heightmap[HugeTileX][HugeTileY] * self.HeightRange,(y-0.5) * self.TileSide + offsetY)
+					local tree_posX = (x-0.5) * self.TileSide + offsetX
+					local tree_posY = Heightmap[HugeTileX][HugeTileY] * self.HeightRange
+					local tree_posZ = (y-0.5) * self.TileSide + offsetY
+
+					local tree_pos_vec = Vector3.new(tree_posX, tree_posY, tree_posZ)
 
 					local random_tree = RandomGen:NextInteger(1,#tree_meshes)
 					local tree = tree_meshes[random_tree]:Clone()
-					tree.Anchored = true
 
 					--Random tree orientation
 					local tree_angle_y = RandomGen:NextInteger(1,360)
@@ -665,7 +691,8 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 					)
 
 					tree.Orientation = Vector3.new(0,-tree_angle_y,0)
-					tree.Position = new_tree_offsets + tree_pos
+					tree.Position = new_tree_offsets + tree_pos_vec
+					tree.Anchored = true
 					tree.Parent = workspace
 
 				end
