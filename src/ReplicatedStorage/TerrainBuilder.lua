@@ -3,15 +3,18 @@ local Utils = require(script.Parent.Utils)
 
 local TerrainBuilderBase = {
 	 TileSide = 20
+	,HugeTileSide = 40
 	,TileHeight = 5
 	,HeightRange = 400
+
 	,SlopeLength = 3
 	,WaterSlopeLength = 3
-
-	,HugeTileSide = 40
+	,SlopesEnabled = true
 
 	,water_plane_y_offset  = -0.5
 	,water_plane_thickness = 0.1
+
+	,TreesEnabled = true
 
 	,Colorset = DefaultColorset
 	,status = "Idle"
@@ -338,201 +341,205 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 		end
 	end
 
-	local slope_count = 0
+	print("Count: "..tostring(count).." instead of "..tostring(map_width*map_height)..", compression rate: "..tostring( (1-(count/(map_width*map_height)))*100 ).."%")
 
-	self:UpdateStatus("Building slopes 1/2")
-	local wedge_parts_y = {}
+	if self.SlopesEnabled then
+		local slope_count = 0
 
-	for x = 1, map_width do
-		wedge_parts_y[x] = {}
+		self:UpdateStatus("Building slopes 1/2")
+		local wedge_parts_y = {}
 
-		local row_hash
-		local row_height
-		local row_length
+		for x = 1, map_width do
+			wedge_parts_y[x] = {}
 
-		for y = 1, map_height do
+			local row_hash
+			local row_height
+			local row_length
 
-			local hash = HashSurroundings(Heightmap,x,y)
-			hash = math.floor(hash / 0b0100)
+			for y = 1, map_height do
 
-			local height = Heightmap[x][y]
+				local hash = HashSurroundings(Heightmap,x,y)
+				hash = math.floor(hash / 0b0100)
 
-			if hash ~= 0 then
-				if not row_hash then
-					row_hash = hash
-					row_height = height
-					row_length = 1
-				elseif height ~= row_height or hash ~= row_hash then
+				local height = Heightmap[x][y]
+
+				if hash ~= 0 then
+					if not row_hash then
+						row_hash = hash
+						row_height = height
+						row_length = 1
+					elseif height ~= row_height or hash ~= row_hash then
+						wedge_parts_y[x][y-row_length] = {y-1, row_hash, row_height}
+
+						row_hash = hash
+						row_height = height
+						row_length = 1
+					else
+						row_length = row_length + 1
+					end
+				elseif row_hash then
 					wedge_parts_y[x][y-row_length] = {y-1, row_hash, row_height}
 
-					row_hash = hash
-					row_height = height
-					row_length = 1
-				else
-					row_length = row_length + 1
+					row_hash = nil
 				end
-			elseif row_hash then
-				wedge_parts_y[x][y-row_length] = {y-1, row_hash, row_height}
 
-				row_hash = nil
+				if row_hash and y == map_height then
+					wedge_parts_y[x][y-row_length+1] = {y, row_hash, row_height}
+				end
+
 			end
-
-			if row_hash and y == map_height then
-				wedge_parts_y[x][y-row_length+1] = {y, row_hash, row_height}
-			end
-
 		end
-	end
 
 
-	for x=1, map_width do
-		for y,row in pairs(wedge_parts_y[x]) do
+		for x=1, map_width do
+			for y,row in pairs(wedge_parts_y[x]) do
 
-			slope_count = slope_count + 1
-			local picked_color = self.Colorset:pickColor(row[3])
-			local hash = row[2]
-
-			--Size
-			local SizeX = self.HugeTileSide * (row[1] - y + 1)
-			local SizeY = self.TileHeight
-			local SizeZ = self.SlopeLength
-
-			local SizeVector = Vector3.new(SizeX, SizeY, SizeZ)
-
-			--Position of wedge in workspace
-			local workspaceX
-			local workspaceY = row[3] * self.HeightRange + self.TileHeight/2
-			local workspaceZ = (y-1) * self.HugeTileSide + SizeX/2 + offsetY
-
-			local wedge_part = Instance.new("WedgePart")
-			wedge_part.Anchored = true
-			wedge_part.Size = SizeVector
-
-			if hash == 0b10 or hash == 0b11 then
-				wedge_part.Rotation = Vector3.new(0,90,0)
-				workspaceX = x * self.HugeTileSide - SizeZ/2 + offsetX
-			else
-				wedge_part.Rotation = Vector3.new(0,-90,0)
-				workspaceX = (x-1) * self.HugeTileSide + SizeZ/2 + offsetX
-			end
-
-			wedge_part.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
-			wedge_part.Color = picked_color
-			wedge_part.Parent = container
-
-			if hash == 0b11 then
 				slope_count = slope_count + 1
+				local picked_color = self.Colorset:pickColor(row[3])
+				local hash = row[2]
 
-				local wedge_part2 = Instance.new("WedgePart")
-				wedge_part2.Anchored = true
-				wedge_part2.Rotation = Vector3.new(0,-90,0)
-				wedge_part2.Size = SizeVector
-				local workspaceX = (x-1) * self.HugeTileSide + SizeZ/2 + offsetX
-				wedge_part2.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
-				wedge_part2.Color = picked_color
-				wedge_part2.Parent = container
+				--Size
+				local SizeX = self.HugeTileSide * (row[1] - y + 1)
+				local SizeY = self.TileHeight
+				local SizeZ = self.SlopeLength
+
+				local SizeVector = Vector3.new(SizeX, SizeY, SizeZ)
+
+				--Position of wedge in workspace
+				local workspaceX
+				local workspaceY = row[3] * self.HeightRange + self.TileHeight/2
+				local workspaceZ = (y-1) * self.HugeTileSide + SizeX/2 + offsetY
+
+				local wedge_part = Instance.new("WedgePart")
+				wedge_part.Anchored = true
+				wedge_part.Size = SizeVector
+
+				if hash == 0b10 or hash == 0b11 then
+					wedge_part.Rotation = Vector3.new(0,90,0)
+					workspaceX = x * self.HugeTileSide - SizeZ/2 + offsetX
+				else
+					wedge_part.Rotation = Vector3.new(0,-90,0)
+					workspaceX = (x-1) * self.HugeTileSide + SizeZ/2 + offsetX
+				end
+
+				wedge_part.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
+				wedge_part.Color = picked_color
+				wedge_part.Parent = container
+
+				if hash == 0b11 then
+					slope_count = slope_count + 1
+
+					local wedge_part2 = Instance.new("WedgePart")
+					wedge_part2.Anchored = true
+					wedge_part2.Rotation = Vector3.new(0,-90,0)
+					wedge_part2.Size = SizeVector
+					local workspaceX = (x-1) * self.HugeTileSide + SizeZ/2 + offsetX
+					wedge_part2.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
+					wedge_part2.Color = picked_color
+					wedge_part2.Parent = container
+				end
+
 			end
-
 		end
-	end
 
-	self:UpdateStatus("Building slopes 2/2")
+		self:UpdateStatus("Building slopes 2/2")
 
-	local wedge_parts_x = {}
+		local wedge_parts_x = {}
 
-	for y = 1,map_height do
-		wedge_parts_x[y] = {}
+		for y = 1,map_height do
+			wedge_parts_x[y] = {}
 
-		local row_hash
-		local row_height
-		local row_length
+			local row_hash
+			local row_height
+			local row_length
 
-		for x = 1,map_width do
+			for x = 1,map_width do
 
-			local hash = HashSurroundings(Heightmap,x,y)
-			hash = hash % 0b0100
+				local hash = HashSurroundings(Heightmap,x,y)
+				hash = hash % 0b0100
 
-			local height = Heightmap[x][y]
+				local height = Heightmap[x][y]
 
-			if hash ~= 0 then
-				if not row_hash then
-					row_hash = hash
-					row_height = height
-					row_length = 1
-				elseif height ~= row_height or hash ~= row_hash then
+				if hash ~= 0 then
+					if not row_hash then
+						row_hash = hash
+						row_height = height
+						row_length = 1
+					elseif height ~= row_height or hash ~= row_hash then
+						wedge_parts_x[y][x-row_length] = {x-1,row_hash,row_height}
+
+						row_hash = hash
+						row_height = height
+						row_length = 1
+					else
+						row_length = row_length + 1
+					end
+				elseif row_hash then
 					wedge_parts_x[y][x-row_length] = {x-1,row_hash,row_height}
 
-					row_hash = hash
-					row_height = height
-					row_length = 1
-				else
-					row_length = row_length + 1
+					row_hash = nil
 				end
-			elseif row_hash then
-				wedge_parts_x[y][x-row_length] = {x-1,row_hash,row_height}
 
-				row_hash = nil
+				if row_hash and x == map_width then
+					wedge_parts_x[y][x-row_length+1] = {x,row_hash,row_height}
+				end
+
 			end
-
-			if row_hash and x == map_width then
-				wedge_parts_x[y][x-row_length+1] = {x,row_hash,row_height}
-			end
-
 		end
-	end
 
-	for y=1, map_height do
-		for x,row in pairs(wedge_parts_x[y]) do
+		for y=1, map_height do
+			for x,row in pairs(wedge_parts_x[y]) do
 
-			local hash = row[2]
-			slope_count = slope_count + 1
-
-			--Size
-			local SizeX = self.HugeTileSide * (row[1] - x + 1)
-			local SizeY = self.TileHeight
-			local SizeZ = self.SlopeLength
-			local SizeVector = Vector3.new(SizeX,SizeY,SizeZ)
-
-			--Position of wedge in workspace
-			local workspaceX = (x-1) * self.HugeTileSide + SizeX/2 + offsetX
-			local workspaceY = row[3] * self.HeightRange + self.TileHeight/2
-			local workspaceZ
-
-			local wedge_part = Instance.new("WedgePart")
-
-			if hash == 0b10 or hash == 0b11 then
-				wedge_part.Rotation = Vector3.new(0,0,0)
-				workspaceZ = y * self.HugeTileSide - SizeZ/2 + offsetY
-			else
-				wedge_part.Rotation = Vector3.new(0,180,0)
-				workspaceZ = (y-1) * self.HugeTileSide + SizeZ/2 + offsetY
-			end
-
-			wedge_part.Anchored = true
-			wedge_part.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
-			wedge_part.Color = self.Colorset:pickColor(row[3])
-			wedge_part.Size = SizeVector
-			wedge_part.Parent = container
-
-			if hash == 0b11 then
+				local hash = row[2]
 				slope_count = slope_count + 1
 
-				local workspaceZ = (y-1) * self.HugeTileSide + SizeZ/2 + offsetY
+				--Size
+				local SizeX = self.HugeTileSide * (row[1] - x + 1)
+				local SizeY = self.TileHeight
+				local SizeZ = self.SlopeLength
+				local SizeVector = Vector3.new(SizeX,SizeY,SizeZ)
 
-				local wedge_part2 = Instance.new("WedgePart")
-				wedge_part2.Anchored = true
-				wedge_part2.Rotation = Vector3.new(0,180,0)
-				wedge_part2.Size = SizeVector
-				wedge_part2.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
-				wedge_part2.Color = self.Colorset:pickColor(row[3])
-				wedge_part2.Parent = container
+				--Position of wedge in workspace
+				local workspaceX = (x-1) * self.HugeTileSide + SizeX/2 + offsetX
+				local workspaceY = row[3] * self.HeightRange + self.TileHeight/2
+				local workspaceZ
+
+				local wedge_part = Instance.new("WedgePart")
+
+				if hash == 0b10 or hash == 0b11 then
+					wedge_part.Rotation = Vector3.new(0,0,0)
+					workspaceZ = y * self.HugeTileSide - SizeZ/2 + offsetY
+				else
+					wedge_part.Rotation = Vector3.new(0,180,0)
+					workspaceZ = (y-1) * self.HugeTileSide + SizeZ/2 + offsetY
+				end
+
+				wedge_part.Anchored = true
+				wedge_part.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
+				wedge_part.Color = self.Colorset:pickColor(row[3])
+				wedge_part.Size = SizeVector
+				wedge_part.Parent = container
+
+				if hash == 0b11 then
+					slope_count = slope_count + 1
+
+					local workspaceZ = (y-1) * self.HugeTileSide + SizeZ/2 + offsetY
+
+					local wedge_part2 = Instance.new("WedgePart")
+					wedge_part2.Anchored = true
+					wedge_part2.Rotation = Vector3.new(0,180,0)
+					wedge_part2.Size = SizeVector
+					wedge_part2.Position = Vector3.new(workspaceX,workspaceY,workspaceZ)
+					wedge_part2.Color = self.Colorset:pickColor(row[3])
+					wedge_part2.Parent = container
+				end
+
 			end
 
 		end
-	end
 
-	print("Count: "..tostring(count).." instead of "..tostring(map_width*map_height)..", compression rate: "..tostring( (1-(count/(map_width*map_height)))*100 ).."%")
-	print("Slopes: "..tostring(slope_count)..", Total: "..tostring(slope_count + count))
+		print("Slopes: "..tostring(slope_count)..", Total: "..tostring(slope_count + count))
+	end
 
 	self:generate_water_plane(container,water_level,map_width,map_height,offsetX,offsetY)
 
@@ -658,56 +665,58 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 
 	local HugeTileSizeCoeff = 2
 
-	self:UpdateStatus("Creating trees")
-	--Get tree meshes
-	local tree_meshes = self.tree_meshes
+	if self.TreesEnabled then
+		self:UpdateStatus("Creating trees")
+		--Get tree meshes
+		local tree_meshes = self.tree_meshes
 
-	if not tree_meshes then
-		if script.Parent:FindFirstChild("Meshes") then
-			tree_meshes = script.Parent.Meshes.Trees:GetChildren()
-		else
-			tree_meshes = {}
+		if not tree_meshes then
+			if script.Parent:FindFirstChild("Meshes") then
+				tree_meshes = script.Parent.Meshes.Trees:GetChildren()
+			else
+				tree_meshes = {}
+			end
 		end
-	end
 
-	if #tree_meshes == 0 then
-		warn("No tree meshes found! Trees will not be generated.")
-	end
+		if #tree_meshes == 0 then
+			warn("No tree meshes found! Trees will not be generated.")
+		end
 
-	if type(trees) == "table" and #tree_meshes > 0 then
-		for x,row in pairs(trees) do
-			local HugeTileX = math.ceil(x / HugeTileSizeCoeff)
+		if type(trees) == "table" and #tree_meshes > 0 then
+			for x,row in pairs(trees) do
+				local HugeTileX = math.ceil(x / HugeTileSizeCoeff)
 
-			for y,check in pairs(row) do
-				local HugeTileY = math.ceil(y / HugeTileSizeCoeff)
+				for y,check in pairs(row) do
+					local HugeTileY = math.ceil(y / HugeTileSizeCoeff)
 
-				if check then
+					if check then
 
-					local tree_posX = (x-0.5) * self.TileSide + offsetX
-					local tree_posY = Heightmap[HugeTileX][HugeTileY] * self.HeightRange
-					local tree_posZ = (y-0.5) * self.TileSide + offsetY
+						local tree_posX = (x-0.5) * self.TileSide + offsetX
+						local tree_posY = Heightmap[HugeTileX][HugeTileY] * self.HeightRange
+						local tree_posZ = (y-0.5) * self.TileSide + offsetY
 
-					local tree_pos_vec = Vector3.new(tree_posX, tree_posY, tree_posZ)
+						local tree_pos_vec = Vector3.new(tree_posX, tree_posY, tree_posZ)
 
-					local random_tree = RandomGen:NextInteger(1,#tree_meshes)
-					local tree = tree_meshes[random_tree]:Clone()
+						local random_tree = RandomGen:NextInteger(1,#tree_meshes)
+						local tree = tree_meshes[random_tree]:Clone()
 
-					--Random tree orientation
-					local tree_angle_y = RandomGen:NextInteger(1,360)
-					local new_offsets_v2 = Utils.turn_vector2(Vector2.new(tree.Position.X,tree.Position.Z), tree_angle_y)
-					local new_tree_offsets = Vector3.new(
-						 new_offsets_v2.X
-						,tree.Position.Y
-						,new_offsets_v2.Y
-					)
+						--Random tree orientation
+						local tree_angle_y = RandomGen:NextInteger(1,360)
+						local new_offsets_v2 = Utils.turn_vector2(Vector2.new(tree.Position.X,tree.Position.Z), tree_angle_y)
+						local new_tree_offsets = Vector3.new(
+							new_offsets_v2.X
+							,tree.Position.Y
+							,new_offsets_v2.Y
+						)
 
-					tree.Orientation = Vector3.new(0,-tree_angle_y,0)
-					tree.Position = new_tree_offsets + tree_pos_vec
-					tree.Anchored = true
-					tree.Parent = workspace
+						tree.Orientation = Vector3.new(0,-tree_angle_y,0)
+						tree.Position = new_tree_offsets + tree_pos_vec
+						tree.Anchored = true
+						tree.Parent = workspace
+
+					end
 
 				end
-
 			end
 		end
 	end
