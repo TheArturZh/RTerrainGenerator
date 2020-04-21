@@ -98,7 +98,7 @@ local function GetSurroundings_Water(TerrainDescriptor,x,y)
 		sides[1] = noise_val-compare_val
 	end
 
-	compare_val = TerrainDescriptor:get_water_surface_level(y+1)
+	compare_val = TerrainDescriptor:get_water_surface_level(x,y+1)
 	if compare_val and compare_val - noise_val < -0.001 then
 		sides[2] = noise_val-compare_val
 	end
