@@ -701,6 +701,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 		end
 	end
 
+	return container
 end
 
 return setmetatable(
