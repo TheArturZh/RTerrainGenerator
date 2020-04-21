@@ -14,6 +14,7 @@ local TerrainBuilderBase = {
 	,water_plane_thickness = 0.1
 
 	,Colorset = DefaultColorset
+	,status = "Idle"
 }
 
 local object_constructor = function()
@@ -177,6 +178,13 @@ function TerrainBuilderBase.generate_water_plane(self,container,level,width,heig
 	water_plane:Destroy()
 end
 
+function TerrainBuilderBase.UpdateStatus(self,string_status)
+	self.status = string_status
+	if string_status ~= "Idle (Finished)" and string_status ~= "Idle" then
+		wait()
+	end
+end
+
 -- self,Heightmap,rivers,lakes,trees,container,offsetX,offsetY,width,height
 function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offsetY)
 	if TerrainDescriptor.status ~= "Initialized" then
@@ -220,6 +228,8 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 
 	-- | Test cases: |
 	--The lowerst layer (at height 0) should be a whole square
+
+	self:UpdateStatus("Building huge tiles")
 
 	local ProcessedHeightmap = {}
 
@@ -287,7 +297,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 		end
 	end
 
-	--Render huge tiles
+	--Build huge tiles
 	local count = 0
 
 	for height = 0, self.HeightRange / self.TileHeight do
@@ -330,7 +340,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 
 	local slope_count = 0
 
-	wait()
+	self:UpdateStatus("Building slopes 1/2")
 	local wedge_parts_y = {}
 
 	for x = 1, map_width do
@@ -426,7 +436,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 		end
 	end
 
-	wait()
+	self:UpdateStatus("Building slopes 2/2")
 
 	local wedge_parts_x = {}
 
@@ -526,7 +536,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 
 	self:generate_water_plane(container,water_level,map_width,map_height,offsetX,offsetY)
 
-	wait()
+	self:UpdateStatus("Creating lakes")
 	--Generate water plane for lakes
 
 	local generated_lake_planes = 0
@@ -577,7 +587,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 	end
 
 
-	wait()
+	self:UpdateStatus("Creating rivers")
 	--Generate river water plane
 	for x=1, map_width do
 		if rivers[x] then
@@ -648,6 +658,7 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 
 	local HugeTileSizeCoeff = 2
 
+	self:UpdateStatus("Creating trees")
 	--Get tree meshes
 	local tree_meshes = self.tree_meshes
 
@@ -700,6 +711,8 @@ function TerrainBuilderBase.Build(self,TerrainDescriptor,container,offsetX,offse
 			end
 		end
 	end
+
+	self:UpdateStatus("Idle (Finished)")
 
 	return container
 end
