@@ -1,16 +1,18 @@
 {
-  "name": "project",
-  "tree": {
-    "$className": "DataModel",
-    "ReplicatedStorage": {
-      "$className": "ReplicatedStorage",
-      "$ignoreUnknownInstances": true,
-      "$path": "src/ReplicatedStorage"
-    },
-    "Workspace": {
-      "$className": "Workspace",
-      "$ignoreUnknownInstances": true,
-      "$path": "src/Workspace"
-    }
-  }
+	"name": "Procedural Map Generator",
+	"tree": {
+		"$className": "DataModel",
+
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"$ignoreUnknownInstances": true,
+			"$path": "src/ReplicatedStorage"
+		},
+
+		"Workspace": {
+			"$className": "Workspace",
+			"$ignoreUnknownInstances": true,
+			"$path": "src/Workspace"
+		}
+	}
 }

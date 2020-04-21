@@ -1,0 +1,17 @@
+{
+	"className": "MeshPart",
+	"properties": {
+		"Size": [21.718, 37.5, 27.656],
+		"InitialSize": {
+			"Type": "Vector3",
+			"Value": [28.9573135, 50.0000038, 36.8745308]
+		},
+		"Position": [-2.609, 18.8, -2.078],
+		"Anchored": true,
+		"Material": "Plastic",
+		"MeshId": "rbxassetid://4893500130",
+		"CollisionFidelity": "Hull",
+		"RenderFidelity": "Precise",
+		"CastShadow": false
+	}
+}

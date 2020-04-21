@@ -1,8 +1,8 @@
 -- This script is for test purposes only, it shouldn't be included in the final build.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TerrainDescriptor = require(ReplicatedStorage.TerrainDescriptor)
-local TerrainBuilder = require(ReplicatedStorage.TerrainBuilder)
+local TerrainDescriptor = require(ReplicatedStorage.ProceduralMapGenerator.TerrainDescriptor)
+local TerrainBuilder = require(ReplicatedStorage.ProceduralMapGenerator.TerrainBuilder)
 
 local width, height = 128,128
 
