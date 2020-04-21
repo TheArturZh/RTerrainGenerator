@@ -4,7 +4,7 @@ Rojo_MacOS_RELEASE_URL   = https://github.com/rojo-rbx/rojo/releases/download/v0
 
 ROJO_VERSION = 0.5.4
 
-TestScriptName = ExampleOfUse.server.lua
+TestScriptName = ExampleOfUse
 TestScriptDir = ./TestPlaceScript
 
 ToolsDir = ./Tools
@@ -46,10 +46,10 @@ build: download_deps
 	$(ROJO) build -o $(BuildName)
 
 test: download_deps
-	cp $(TestScriptDir)/$(TestScriptName) $(SrcDir)/Workspace/$(TestScriptName)
+	cp $(TestScriptDir)/$(TestScriptName) $(SrcDir)/Workspace/$(TestScriptName) -r
 	rm -f $(TestBuildName)
 	$(ROJO) build -o $(TestBuildName)
-	rm -f $(SrcDir)/Workspace/$(TestScriptName)
+	rm -f -r $(SrcDir)/Workspace/$(TestScriptName)
 
 clean:
 	rm -f $(BuildName)
