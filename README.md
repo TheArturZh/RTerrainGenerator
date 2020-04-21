@@ -16,7 +16,7 @@ This project is under MIT License, and it means that you are free to develop a c
 
 All modules are linked with relative pathes, and it means that they can be placed anywhere you want (keeping the original structure).
 
-There are already built packages that you can import in Roblox Studio and .rbxlx example places in Releases tab. However, you can also build it yourself:
+There are already built .rbxlx places with example-of-use script and .rbmx model files in Releases tab. However, you can also build it yourself:
 
 ## Building the project
 
