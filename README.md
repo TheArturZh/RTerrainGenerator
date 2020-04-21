@@ -1,5 +1,7 @@
 # TheArturZh's Procedural Terrain Generator
 
+Created using [**Rojo**](https://github.com/rojo-rbx/rojo)
+
 This is a procedural terrain generator, that doesn't utilize default Roblox terrain. It's designed to be orthogonal and easy to integrate into other projects. This generator can generate not only a terrain, but also rivers, lakes and forests. Generator uses exponentially destributed Perlin noise with domain warping to generate a heightmap.
 
 ![Generated terrain picture 1](./Images/pic1.png)
@@ -46,4 +48,4 @@ After you'll make sure that all these utilities are installed, open Bash, go to 
 
 If you are using **MacOS** and installed GNU Make using Homebrew, you should use `gmake` and `gmake test` commands instead.
 
-The **make** utility will download all other dependencies and build the project.
+The **make** utility will download all other dependencies (currently only Rojo) and build the project.
