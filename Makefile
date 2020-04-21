@@ -4,7 +4,7 @@ Rojo_MacOS_RELEASE_URL   = https://github.com/rojo-rbx/rojo/releases/download/v0
 
 ROJO_VERSION = 0.5.4
 
-TestScriptName = test.server.lua
+TestScriptName = ExampleOfUse.server.lua
 TestScriptDir = ./TestPlaceScript
 
 ToolsDir = ./Tools
