@@ -35,7 +35,7 @@ end
 	(negative angle should be used).
 ]]
 function module.turn_vector2(v2, angle)
-	local angle_rad = angle/180 * math.pi
+	local angle_rad = math.rad(angle)
 
 	local cos = math.cos(angle_rad)
 	local sin = math.sin(angle_rad)
