@@ -1,5 +1,14 @@
+--[[
+	Copyright (c) 2020, Artur Zhidkov (TheArturZh)
+--]]
+
 local module = {}
 
+--[[
+	This function is from ToLua project:
+	https://github.com/topameng/tolua/blob/master/Assets/ToLua/Lua/UnityEngine/Mathf.lua
+	Copyright (c) 2015 - 2016, 蒙占志(topameng) topameng@gmail.com
+--]]
 function module.inverse_lerp(from, to, value)
 	if from < to then
 		if value < from then
