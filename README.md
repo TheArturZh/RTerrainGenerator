@@ -1,8 +1,10 @@
-# TheArturZh's Procedural Terrain Generator
+# Procedural Terrain Generator for Roblox
+
+This is a procedural terrain generator, that doesn't utilize default Roblox terrain. It's designed to be orthogonal and easy to integrate into other projects. This generator can generate not only a terrain, but also rivers, lakes and forests. Generator uses exponentially destributed Perlin noise with domain warping to generate a heightmap.
 
 Created using [**Rojo**](https://github.com/rojo-rbx/rojo)
 
-This is a procedural terrain generator, that doesn't utilize default Roblox terrain. It's designed to be orthogonal and easy to integrate into other projects. This generator can generate not only a terrain, but also rivers, lakes and forests. Generator uses exponentially destributed Perlin noise with domain warping to generate a heightmap.
+## Screenshots
 
 ![Generated terrain picture 1](./Images/pic1.png)
 
@@ -10,7 +12,22 @@ This is a procedural terrain generator, that doesn't utilize default Roblox terr
 
 ## License explaination
 
-This project is under MIT License, and it means that you are free to develop a closed-source version of this project without having to contribute back or attribute. Attribution is only required if you'll decide to make your version open-source.
+This project is licensed under MIT License, and it means that you are free to develop a closed-source version of this project without having to contribute back.  
+Attribution in code/repository is only required if you'll decide to make your version open-source.  
+In closed-source project you should add attribution in any way that is visible to user.  
+  
+Example:  
+
+```text
+Procedural Terrain Generator (c) Artur Zhidkov (TheArturZh),
+includes code from ToLua (c) 蒙占志(topameng)
+```
+
+in "About" or "Credits" menu option.
+
+## Current project maintainers
+
+* TheArturZh
 
 ## Download and usage
 
@@ -20,7 +37,7 @@ There are already built .rbxlx places with example-of-use script and .rbmx model
 
 ## Building the project
 
-Building this project is absolutely optional, latest release can be dolwnloaded in Relseases tab.
+Building this project is not necessary, latest release can be dolwnloaded in Relseases tab.
 
 ### 1. Dependencies
 
